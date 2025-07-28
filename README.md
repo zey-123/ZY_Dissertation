@@ -1,5 +1,5 @@
-ZY Dissertation Repository 
----
+# ZY Dissertation Repository <img width="80" alt="image" src="https://github.com/user-attachments/assets/c39cc1b2-f421-4af5-8181-6b75d6337279" />
+
 **Student name:** Zeynep Deniz Yuksel 
 
 **Degree program:** Ecological and Environmental Sciences 
@@ -23,6 +23,14 @@ The analysis will proceed in two main stages. First, phenological indices will b
 Second, the study will apply time-series and statistical analyses to assess how these indices vary over the 30+ year dataset. This will include linear trend analysis, Generalized Linear Models (GLMs), and repeated-measures ANOVAs to test for temporal changes and linkages to sea surface temperature. The strength of this approach lies in its ability to condense complex, multi-species data into interpretable phenological trends that can be quantitatively compared across years and taxa.
 
 By focusing on long-term phenological patterns and their link to temperature, this research addresses a key gap in the literature: the lack of open-ocean, long-term analyses of plankton seasonality under climate change. The results will enhance our understanding of ecosystem sensitivity to warming oceans, and may provide insights into broader implications for oceanic carbon cycling, trophic mismatches, and marine biodiversity.
+
+## What this repository contains 
+### Datasets Folder
+This folder contains all the relevant datasets that are used along with a descriptive README file. There are ___ datasets that can be found in this folder:___
+### Scripts Folder
+This folder contains R-scripts (this is named '___') along with additional R-scripts for the purpose of easier navigation and a more organized repo along with an informative README file.
+### Figures Folder
+This folder contains copies of output figures, coded using the R-script under R-scripts Folder and contains an informative README file.  
 
 
 
