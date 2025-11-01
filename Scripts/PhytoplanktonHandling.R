@@ -27,3 +27,45 @@ plot(BATS_chla$Chl, BATS_chla$Depth, type="p", ylim=rev(range(BATS_chla$Depth)),
      xlab="Chlorophyll a (ug/L)", ylab="Depth (m)",
      main="BATS Chlorophyll a Profile")
 
+#remove rows with NA values in Depth or Chl
+#BATS_chla <- BATS_chla %>%
+#  filter(!is.na(Depth) & !is.na(Chl))
+
+#Step 1: Decide on reference depth as 200m and Interpolate each cast onto a standard depth grid. ----
+standard_depths <- seq(0, 200, by = 1) # Standard depth grid from 0 to 200 m at 1 m intervals
+BATS_chla_interpolated <- BATS_chla %>%
+  group_by(yyyymmd) %>%
+  do({
+    interp_chl <- approx(.$Depth, .$Chl, xout = standard_depths, rule = 2)$y
+    data.frame(Depth = standard_depths, Chl = interp_chl)
+  }) %>%
+  ungroup()
+View(BATS_chla_interpolated)
+
+
+#Step 2: Normalize either: By depth-integrated chlorophyll (average over layer) OR Z-score per depth OR Relative to total chlorophyll in upper layer ----
+BATS_chla_normalized <- BATS_chla_interpolated %>%
+  group_by(yyyymmd) %>%
+  mutate(Total_Chl = sum(Chl, na.rm = TRUE),
+         Chl_Normalized = Chl / Total_Chl) %>%
+  ungroup()
+View(BATS_chla_normalized)
+
+#Step 3: Visualize time-series at specific depths or depth-averaged ----
+# Example: Time-series at 10m depth
+chl_10m <- BATS_chla_normalized %>%
+  filter(Depth == 10)
+plot(as.Date(chl_10m$yyyymmd, format="%Y%m%d"), chl_10m$Chl_Normalized, type="l",
+     xlab="Date", ylab="Normalized Chlorophyll a at 10m",
+     main="Time-series of Normalized Chlorophyll a at 10m Depth")
+# Example: Depth-averaged normalized chlorophyll
+chl_depth_avg <- BATS_chla_normalized %>%
+  group_by(yyyymmd) %>%
+  summarise(Depth_Avg_Chl = mean(Chl_Normalized, na.rm = TRUE)) %>%
+  ungroup()
+plot(as.Date(chl_depth_avg$yyyymmd, format="%Y%m%d"), chl_depth_avg$Depth_Avg_Chl, type="l",
+     xlab="Date", ylab="Depth-averaged Normalized Chlorophyll a",
+     main="Time-series of Depth-averaged Normalized Chlorophyll a")
+
+# Step 4: Seasonal pattern analysis ----
+
