@@ -5,8 +5,8 @@ library(readxl)
 library(ggplot2)
 
 # Step 1: Load the zooplankton dataset ----
-zooplankton<- read_excel("Data/BATS_zooplankton (1).xlsx")
-View(BATS_zooplankton_1_)
+zooplankton<- read_excel("Data/BATS_zooplankton (1).xlsx",na="-999")
+View(zooplankton)
 
 # Step 2: Check column names ----
 # Getting rid of the first 34 rows
