@@ -5,6 +5,7 @@ library(dplyr)
 BATS_pigments_1_ <- read_excel("Data/BATS_pigments (1).xlsx",na="-999")
 View(BATS_pigments_1_)
 
+# Cleaning the dataset ----
 #get rid of rows 1-49 and make the new row 1 column names
 BATS_pigments <- BATS_pigments_1_[-c(1:49), ]
 colnames(BATS_pigments) <- BATS_pigments[1, ] #set first row as column names
@@ -22,15 +23,42 @@ View(BATS_chla)
 BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
 BATS_chla$Chl <- as.numeric(BATS_chla$Chl)
 
-#plot Chl_a_ug_per_L vs Depth_m
-plot(BATS_chla$Chl, BATS_chla$Depth, type="p", ylim=rev(range(BATS_chla$Depth)),
-     xlab="Chlorophyll a (ug/L)", ylab="Depth (m)",
-     main="BATS Chlorophyll a Profile")
-
 #remove rows with NA values in Depth or Chl
-#BATS_chla <- BATS_chla %>%
-#  filter(!is.na(Depth) & !is.na(Chl))
+BATS_chla <- BATS_chla %>%
+  filter(!is.na(Depth) & !is.na(Chl))
 
+
+# Depth Integration (z-score) ----
+# calculating the mean - Sum all the chlorophyll values in the BATS_chla dataset and divide by the number of data points.
+(mean_chla <- mean(BATS_chla$Chl, na.rm = TRUE))
+# calculating the standard deviation - Calculate the standard deviation of the chlorophyll values in the BATS_chla dataset.
+(sd_chla <- sd(BATS_chla$Chl, na.rm = TRUE))
+
+# calculating the z-score - For each chlorophyll value, subtract the mean and divide by the standard deviation.
+BATS_chla <- BATS_chla %>%
+  mutate(Chl_zscore = (Chl - mean_chla) / sd_chla)
+View(BATS_chla)
+
+#order dataset by depth
+BATS_chla <- BATS_chla %>%
+  arrange(Depth)
+View(BATS_chla)
+
+
+
+
+
+# Vertical integration
+# Compute depth-integrated chlorophyll by integration - zero as bottom of integration 200 as top Chl(z) dz then normalize by dividing integration depth to get an avg
+BATS_chla_depth_integrated <- BATS_chla %>%
+  group_by(yyyymmd) %>% # group by date
+  summarise(Depth_Integrated_Chl = sum(Chl, na.rm = TRUE) * (200 / n())) %>% # integrate and normalize
+  ungroup() # ungroup the data
+View(BATS_chla_depth_integrated)
+
+
+
+# Trying stuff out ----
 #Step 1: Decide on reference depth as 200m and Interpolate each cast onto a standard depth grid. ----
 standard_depths <- seq(0, 200, by = 1) # Standard depth grid from 0 to 200 m at 1 m intervals
 BATS_chla_interpolated <- BATS_chla %>%
