@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# Ignore large local data
+data_local/
+*.zip
+*.xls
+*.xlsx
