@@ -12,7 +12,7 @@ View(b50049_ctd)
 library(dplyr)
 b50049_ctd_surface <- b50049_ctd %>%
   filter(depth_m <= 200) %>%
-  select(cast_ID, date, latitude, longitude, depth_m, temperature_C) %>%
+  select(cast_ID, decimal_year, date, latitude, longitude, depth_m, temperature_C) %>%
   arrange(desc(depth_m)) %>%
   na.omit()
 #view the surface data
@@ -62,7 +62,7 @@ read_and_extract_surface <- function(file) {
   
   df_surface <- df %>% #  Extract upper 200m data
     filter(depth_m <= 200) %>%  # keep only upper/pelagic
-    select(cast_ID, date, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
+    select(cast_ID, decimal_year, date, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
     arrange(desc(depth_m)) %>% # arrange by depth descending
     na.omit() # remove rows with missing data
   
@@ -72,7 +72,7 @@ read_and_extract_surface <- function(file) {
   return(df_surface)
 }
 
-# Apply the function to every CTD file
+#** Apply the function to every CTD file
 bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
 
 # Combine into one big data frame
@@ -81,7 +81,7 @@ bats_temp_surface <- bind_rows(bats_temp_surface)
 # Inspecting new dataset - bats_temp_surface and checking everything is correct ----
 View(bats_temp_surface)
 summary(bats_temp_surface$depth_m) # checking range
-  #Minimum = 1.97 (surface) and Maximum ≤ 200 = 199.68, so no depth >200 and the filtering worked YAY
+#Minimum = 1.97 (surface) and Maximum ≤ 200 = 199.68, so no depth >200 and the filtering worked YAY
 length(unique(bats_temp_surface$cast_ID)) # checking number of unique casts combined
 # 5006
 
@@ -96,23 +96,70 @@ length(unique(bats_temp_surface$file_name)) # 447 - this is the number of indivi
 
 
 #### Visualizing general temperature trends ----
-bats_temp_surface$date <- as.Date(bats_temp_surface$date)
 
-library(ggplot2)
+#standardizing dates all into proper date objects----
+#but first figuring out what the date entails 
+min(bats_temp_surface$date)
+max(bats_temp_surface$date)
+summary(bats_temp_surface$date)
+bats_temp_surface %>%
+  mutate(length = nchar(as.character(date))) %>%
+  count(length)
+
+#now standardize
 library(dplyr)
+library(lubridate)
+library(stringr)
 
-bats_summary <- bats_temp_surface %>%
-  mutate(year = (date)) %>%
-  group_by(year) %>%
+bats_temp_surface <- bats_temp_surface %>%
+  mutate(
+    date_clean = case_when(
+      nchar(as.character(date)) == 8 ~ as.Date(as.character(date), format = "%Y%m%d"), # YYYYMMDD
+      nchar(as.character(date)) == 6 ~ as.Date(paste0(as.character(date), "01"), format = "%Y%m%d"), #YYYYMM
+      (date > 0 & date < 100) ~ date_decimal(1988 + date),  # assume base year 1988 = Decimal year (e.g. 31.783) 
+      str_detect(as.character(date), "\\.") ~ date_decimal(1988 + as.numeric(date)), #Long decimal version
+      TRUE ~ as.Date(NA) #Everything else is missing
+    )
+  )
+summary(bats_temp_surface$date_clean)
+head(bats_temp_surface %>% select(date, date_clean))
+
+# ----
+# Visualizing average surface temperature over time
+library(ggplot2)
+
+bats_temp_yearly <- bats_temp_surface %>%
+  group_by(year = floor(decimal_year)) %>%
+  filter(year < 2016) %>% #removing 2016 as it appears to be an outlier? 
+  summarise(mean_temp = mean(temperature_C, na.rm = TRUE))
+
+ggplot(bats_temp_yearly, aes(x = year, y = mean_temp)) +
+  geom_line(color = "darkgreen") +
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE, color = "forestgreen", linetype = "dashed") +
+  labs(x = "Year", y = "Mean Temperature (°C)",
+       title = "Annual Mean Surface Temperature at BATS Over Time") +
+  theme_classic()
+#look at the range for temperature data
+summary(bats_temp_surface$temperature_C)
+
+
+#visualizing relationship between depth and temperature averaged across years by using bins of depth----
+bats_temp_depth <- bats_temp_surface %>%
+  group_by(depth_bin = cut(depth_m, breaks = seq(0, 200, by = 10))) %>%
   summarise(mean_temp = mean(temperature_C, na.rm = TRUE),
-            n = n())
+            mid_depth = mean(as.numeric(sub("\\((.+),(.+)\\]", "\\1", depth_bin)) + 5)) # calculate mid-point of each bin
 
-ggplot(bats_summary, aes(x = year, y = mean_temp)) +
-  geom_line() +
+ggplot(bats_temp_depth, aes(x = mean_temp, y = mid_depth)) +
+  geom_line(color = "blue") +
   geom_point() +
-  labs(title = "Average Surface Temperature at BATS Over Time",
-       x = "Year", y = "Mean Surface Temperature (°C)") +
+  scale_y_reverse() + # reverse y-axis to have depth increasing downwards
+  labs(x = "Mean Temperature (°C)", y = "Depth (m)",
+       title = "Average Temperature Profile by Depth at BATS") +
   theme_minimal()
+#view the depth temperature data
+View(bats_temp_depth)
+
 
 
 
