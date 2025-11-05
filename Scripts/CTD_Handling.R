@@ -1,4 +1,4 @@
-###### Example of reading in and handling CTD data from BATS cast 49 ----
+##### Example of reading in and handling CTD data from BATS cast 49 ----
 library(readxl)
 b50049_ctd <- read_excel("Data/CTD/b50049_ctd.xls",na="-999")
 View(b50049_ctd)
@@ -78,7 +78,7 @@ bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
 # Combine into one big data frame
 bats_temp_surface <- bind_rows(bats_temp_surface)
 
-# Inspect result and checking its correct
+# Inspecting new dataset - bats_temp_surface and checking everything is correct ----
 View(bats_temp_surface)
 summary(bats_temp_surface$depth_m) # checking range
   #Minimum = 1.97 (surface) and Maximum ≤ 200 = 199.68, so no depth >200 and the filtering worked YAY
@@ -90,10 +90,29 @@ bats_temp_surface %>%
   arrange(desc(n)) %>%
   head(10)
 # shows number of measurements per cast_ID, top 10 casts with most measurements
-length(unique(bats_temp_surface$file_name))
+length(unique(bats_temp_surface$file_name)) # 447 - this is the number of individual files loaded and is correct YAY
 
 
 
+
+#### Visualizing general temperature trends ----
+bats_temp_surface$date <- as.Date(bats_temp_surface$date)
+
+library(ggplot2)
+library(dplyr)
+
+bats_summary <- bats_temp_surface %>%
+  mutate(year = (date)) %>%
+  group_by(year) %>%
+  summarise(mean_temp = mean(temperature_C, na.rm = TRUE),
+            n = n())
+
+ggplot(bats_summary, aes(x = year, y = mean_temp)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Average Surface Temperature at BATS Over Time",
+       x = "Year", y = "Mean Surface Temperature (°C)") +
+  theme_minimal()
 
 
 
