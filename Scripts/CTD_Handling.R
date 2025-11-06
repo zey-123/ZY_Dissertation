@@ -75,22 +75,107 @@ col_names <- c(
   "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
 )
 
-# Function to read and clean one CTD file
+# Other methods of handling variable column numbers----
+# 1) initial method - doesnt handle column numbers 
+  # Function to read and clean one CTD file
+  #read_and_extract_surface <- function(file) {
+  #  df <- read_excel(file, na = "-999", col_names = FALSE) # read without column names
+  #  colnames(df) <- col_names # Apply the same cleaning steps
+  
+  #  df_surface <- df %>% #  Extract upper 200m data
+  #    filter(depth_m <= 200) %>%  # keep only upper/pelagic
+  #    select(cast_ID, decimal_year, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
+  #    arrange(desc(depth_m)) %>% # arrange by depth descending
+  #    na.omit() # remove rows with missing data
+  
+   # Add filename (cast ID reference) just in case
+  #  df_surface$file_name <- basename(file)
+  
+   # return(df_surface)
+  #}
+
+# 2) Alternative method handling 13 or 14 columns
 read_and_extract_surface <- function(file) {
-  df <- read_excel(file, na = "-999", col_names = FALSE) # read without column names
-  colnames(df) <- col_names # Apply the same cleaning steps
+   df <- read_excel(file, na = "-999", col_names = FALSE)
+
+  # Count number of columns in this file
+   n_cols <- ncol(df)
   
-  df_surface <- df %>% #  Extract upper 200m data
-    filter(depth_m <= 200) %>%  # keep only upper/pelagic
-    select(cast_ID, decimal_year, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
-    arrange(desc(depth_m)) %>% # arrange by depth descending
-    na.omit() # remove rows with missing data
+  # Define both possible name sets
+  col_names_13 <- c("cast_ID", "decimal_year", "latitude", "longitude",
+                    "pressure_dbar", "depth_m", "temperature_C",
+                    "conductivity_S_per_m", "salinity_PSS78",
+                    "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",
+                    "fluorescence_RFU", "PAR_uE_per_m2_per_s")
   
-  # Add filename (cast ID reference) just in case
+  col_names_14 <- c("cast_ID", "decimal_year", "date", "latitude", "longitude",
+                    "pressure_dbar", "depth_m", "temperature_C",
+                     "conductivity_S_per_m", "salinity_PSS78",
+                     "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",
+                    "fluorescence_RFU", "PAR_uE_per_m2_per_s")
+  
+  # Apply appropriate column names
+  if (n_cols == 13) {
+    colnames(df) <- col_names_13
+  } else if (n_cols == 14) {
+    colnames(df) <- col_names_14
+  } else {
+    warning(paste("Unexpected number of columns in file:", basename(file)))
+    return(NULL)
+  }
+  
+  # Continue cleaning — works for both
+  df_surface <- df %>%
+    filter(depth_m <= 200) %>%
+    select(any_of(c("cast_ID", "decimal_year", "latitude", "longitude",
+                    "depth_m", "temperature_C"))) %>%
+    arrange(desc(depth_m)) %>%
+    na.omit()
+  
+  df_surface$file_name <- basename(file)
+  return(df_surface)
+}
+
+##################################### 
+read_and_extract_surface <- function(file) {
+  # Read without headers, treat -999 as NA
+  df <- read_excel(file, na = "-999", col_names = FALSE)
+  
+  # Standard expected columns (13 core variables)
+  expected_cols <- c(
+    "cast_ID", "decimal_year", "latitude", "longitude",
+    "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m",
+    "salinity_PSS78", "dissolved_oxygen_umol_per_kg",
+    "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
+  )
+  
+  # Sometimes there's an extra date column → 14 columns
+  # Try to identify and drop it automatically
+  if (ncol(df) > length(expected_cols)) {
+    # Create a temporary name list with extra cols labeled as "extra"
+    colnames(df) <- c(expected_cols, rep("extra", ncol(df) - length(expected_cols)))
+    
+    # Drop any column that looks like a date or extra
+    df <- df %>% select(-matches("extra"))
+  } else {
+    colnames(df) <- expected_cols[1:ncol(df)]
+  }
+  
+  # Now filter and tidy
+  df_surface <- df %>%
+    # Remove nonsensical values
+    filter(!is.na(depth_m), !is.na(temperature_C)) %>%
+    filter(depth_m <= 200) %>%
+    select(any_of(c("cast_ID", "decimal_year", "latitude", "longitude",
+                    "depth_m", "temperature_C"))) %>%
+    arrange(desc(depth_m))
+  
+  # Add filename as identifier
   df_surface$file_name <- basename(file)
   
   return(df_surface)
 }
+
 
 #** Apply the function to every CTD file
 bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
@@ -124,7 +209,7 @@ library(ggplot2)
 
 bats_temp_yearly <- bats_temp_surface %>%
   group_by(year = floor(decimal_year)) %>%
-  filter(year < 2016) %>% #removing 2016 as it appears to be an outlier? 
+  #filter(year < 2016) %>% #removing 2016 as it appears to be an outlier? 
   summarise(mean_temp = mean(temperature_C, na.rm = TRUE))
 
 ggplot(bats_temp_yearly, aes(x = year, y = mean_temp)) +
@@ -162,6 +247,22 @@ ggplot(bats_temp_depth, aes(x = mean_temp, y = mid_depth)) +
        title = "Average Temperature Profile by Depth at BATS") +
   theme_classic()
 
+#visualizing temperature with depth over time using a heatmap----
+bats_temp_surface <- bats_temp_surface %>%
+  mutate(year = floor(decimal_year),
+         depth_bin = cut(depth_m, breaks = seq(0, 200, by = 10)))
+bats_temp_heatmap <- bats_temp_surface %>%
+  group_by(year, depth_bin) %>%
+  summarise(mean_temp = mean(temperature_C, na.rm = TRUE),
+            mid_depth = mean(as.numeric(sub("\\((.+),(.+)\\]", "\\1", depth_bin)) + 5)) %>%
+  ungroup()
+ggplot(bats_temp_heatmap, aes(x = year, y = mid_depth, fill = mean_temp)) +
+  geom_tile() +
+  scale_y_reverse() + # reverse y-axis
+  scale_fill_viridis_c(option = "plasma") + # use viridis color scale
+  labs(x = "Year", y = "Depth (m)", fill = "Mean Temp (°C)",
+       title = "Heatmap of Mean Temperature by Depth and Year at BATS") +
+  theme_classic()
 
 
 
