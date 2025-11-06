@@ -3,8 +3,8 @@ library(readxl)
 b50049_ctd <- read_excel("Data/CTD/b50049_ctd.xls",na="-999")
 View(b50049_ctd)
 
-#add column names in the following order: "cast_ID" , "decimal_year", "date", "latitude", "longitude", "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m", "salinity_PSS78", "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",  "fluorescence_RFU",  "PAR_uE_per_m2_per_s"
-colnames(b50049_ctd) <- c("cast_ID" , "decimal_year", "date", "latitude", "longitude", "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m", "salinity_PSS78", "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",  "fluorescence_RFU",  "PAR_uE_per_m2_per_s" )
+#add column names in the following order: "cast_ID" , "decimal_year", "latitude", "longitude", "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m", "salinity_PSS78", "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",  "fluorescence_RFU",  "PAR_uE_per_m2_per_s"
+colnames(b50049_ctd) <- c("cast_ID" , "decimal_year", "latitude", "longitude", "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m", "salinity_PSS78", "dissolved_oxygen_umol_per_kg", "beam_attenuation_1_per_m",  "fluorescence_RFU",  "PAR_uE_per_m2_per_s" )
 #view the data
 View(b50049_ctd)
 
@@ -12,7 +12,7 @@ View(b50049_ctd)
 library(dplyr)
 b50049_ctd_surface <- b50049_ctd %>%
   filter(depth_m <= 200) %>%
-  select(cast_ID, decimal_year, date, latitude, longitude, pressure_dbar, depth_m, temperature_C) %>%
+  select(cast_ID, decimal_year, latitude, longitude, depth_m, temperature_C) %>%
   arrange(desc(depth_m)) %>%
   na.omit()
 #view the surface data
@@ -23,14 +23,14 @@ plot(b50049_ctd_surface$temperature_C, b50049_ctd_surface$depth_m, type="l", yli
      xlab="Temperature (°C)", ylab="Depth (m)",
      main="CTD Temperature Profile - BATS Cast 49")
 
-plot(b50049_ctd_surface$temperature_C, b50049_ctd_surface$pressure_dbar, type="l", ylim=rev(range(b50049_ctd_surface$pressure_dbar)),
-     xlab="Temperature (°C)", ylab="Pressure (dbar)",
-     main="CTD Temperature Profile - BATS Cast 49")
+#plot(b50049_ctd_surface$temperature_C, b50049_ctd_surface$pressure_dbar, type="l", ylim=rev(range(b50049_ctd_surface$pressure_dbar)),
+ #    xlab="Temperature (°C)", ylab="Pressure (dbar)",
+ #    main="CTD Temperature Profile - BATS Cast 49")
 
 #plotting depth against pressure 
-plot(b50049_ctd_surface$depth_m, b50049_ctd_surface$pressure_dbar,
-     xlab="Depth (m)", ylab="Pressure (dbar)",
-     main="Depth vs Pressure - BATS Cast 49")
+#plot(b50049_ctd_surface$depth_m, b50049_ctd_surface$pressure_dbar,
+#     xlab="Depth (m)", ylab="Pressure (dbar)",
+#     main="Depth vs Pressure - BATS Cast 49")
 
 
 b50049_ctd_surface %>%
@@ -69,7 +69,7 @@ ctd_files <- list.files(path, pattern = "_ctd\\.xls$", full.names = TRUE)
 
 # Define the column names once
 col_names <- c(
-  "cast_ID", "decimal_year", "date", "latitude", "longitude",
+  "cast_ID", "decimal_year", "latitude", "longitude",
   "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m",
   "salinity_PSS78", "dissolved_oxygen_umol_per_kg",
   "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
@@ -82,7 +82,7 @@ read_and_extract_surface <- function(file) {
   
   df_surface <- df %>% #  Extract upper 200m data
     filter(depth_m <= 200) %>%  # keep only upper/pelagic
-    select(cast_ID, decimal_year, date, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
+    select(cast_ID, decimal_year, latitude, longitude, depth_m, temperature_C) %>% # select relevant columns
     arrange(desc(depth_m)) %>% # arrange by depth descending
     na.omit() # remove rows with missing data
   
