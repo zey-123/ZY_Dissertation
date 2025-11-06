@@ -27,7 +27,7 @@ plot(b50049_ctd_surface$temperature_C, b50049_ctd_surface$pressure_dbar, type="l
      xlab="Temperature (°C)", ylab="Pressure (dbar)",
      main="CTD Temperature Profile - BATS Cast 49")
 
-#plot depth against pressure 
+#plotting depth against pressure 
 plot(b50049_ctd_surface$depth_m, b50049_ctd_surface$pressure_dbar,
      xlab="Depth (m)", ylab="Pressure (dbar)",
      main="Depth vs Pressure - BATS Cast 49")
@@ -165,6 +165,12 @@ ggplot(bats_temp_depth, aes(x = mean_temp, y = mid_depth)) +
 
 
 
+
+
+
+
+
+####################### EXTRA ###############################################
 #standardizing dates all into proper date objects----
 #but first figuring out what the date entails 
 min(bats_temp_surface$date)
