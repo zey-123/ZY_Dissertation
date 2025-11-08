@@ -94,7 +94,7 @@ col_names <- c(
    # return(df_surface)
   #}
 
-# 2) Alternative method handling 13 or 14 columns
+# 2) Alternative method handling 13 or 14 columns - OBSERVATIONS 484447 (MORE THAN OPTION 3)
 read_and_extract_surface <- function(file) {
    df <- read_excel(file, na = "-999", col_names = FALSE)
 
@@ -137,6 +137,7 @@ read_and_extract_surface <- function(file) {
 }
 
 ##################################### 
+# 3) Option 3 - alternative method to handling variable columns by dropping extra date column if present - OBSERVATIONS 484321 (LESS THAN OPTION 2)
 read_and_extract_surface <- function(file) {
   # Read without headers, treat -999 as NA
   df <- read_excel(file, na = "-999", col_names = FALSE)
@@ -176,7 +177,7 @@ read_and_extract_surface <- function(file) {
   return(df_surface)
 }
 
-
+############################################
 #** Apply the function to every CTD file
 bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
 
