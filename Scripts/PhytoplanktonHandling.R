@@ -19,6 +19,15 @@ BATS_chla <- BATS_pigments %>%
   na.omit()
 View(BATS_chla)
 
+
+
+
+
+
+
+
+
+#######################################
 #convert Depth_m and Chl_a_ug_per_L to numeric
 BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
 BATS_chla$Chl <- as.numeric(BATS_chla$Chl)
