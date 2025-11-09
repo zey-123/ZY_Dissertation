@@ -19,11 +19,51 @@ BATS_chla <- BATS_pigments %>%
   na.omit()
 View(BATS_chla)
 
+#round from decimal to whole number
+BATS_chla$Depth <- round(as.numeric(BATS_chla$Depth))
 
 
+# Normalizing ----
+
+### Step 1: Interpolation to a Standard Depth Grid (every 5 m from 0 m to 200 m.) ----
+
+# Group by unique depths and average chlorophyll values if duplicates exist
+
+BATS_chla <- BATS_chla %>%
+  group_by(yyyymmd, Depth) %>%
+  summarise(Chl = mean(Chl, na.rm = TRUE)) %>%
+  ungroup()
+
+# Create a standard depth grid
+standard_depths <- seq(0, 200, by = 5) # Standard depth grid from 0 to 200 m at 5 m intervals
+Chl <- BATS_chla$Chl
+Depth <- BATS_chla$Depth
+
+interp_chl <- approx(Depth, Chl, xout=standard_depths, rule=2)$y  # rule=2 => use boundary values for extrapolation
 
 
+library(pracma)   # for trapz
+# linear interpolation
+interp_chl <- approx(depth, chl_ug_L, xout=std_grid, rule=2)$y  # rule=2 => use boundary values for extrapolation
 
+# convert µg L^-1 to µg m^-3
+chl_ug_m3 <- interp_chl * 1000
+
+# integrate 0-200 m (gives µg m^-2)
+chl_ug_m2 <- trapz(std_grid, chl_ug_m3)
+chl_mg_m2 <- chl_ug_m2 / 1000
+
+# if cast only to 150 m, option A scale, option B extend with last value
+Zmax <- max(depth)
+# option A: scale
+integral_to_Zmax <- trapz(seq(0,Zmax,by=1), approx(depth, chl_ug_L*1000, xout=seq(0,Zmax,by=1))$y)
+scaled_integral_ug_m2 <- integral_to_Zmax * (200 / Zmax)
+
+# option B: extend using last measured value down to 200 m
+ext_depths <- c(depth,200)
+ext_chl <- c(chl_ug_L, tail(chl_ug_L,1))
+ext_interp <- approx(ext_depths, ext_chl, xout=std_grid)$y * 1000
+extended_integral_ug_m2 <- trapz(std_grid, ext_interp)
 
 
 
