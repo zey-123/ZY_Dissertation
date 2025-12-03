@@ -75,8 +75,80 @@ col_names <- c(
   "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
 )
 
+
+# Diagnosing column misalignment issues ----
+diagnose_ctd_file <- function(ctd_files) {
+  df <- read_excel(ctd_files, na = "-999", col_names = FALSE)
+  n_cols <- ncol(df)
+
+  # Expected numeric column for temperature is always column 7 (in 13-col format)
+  # or column 8 (in 14-col format, because of the date column)
+  
+  # Determine expected temperature column index
+  expected_temp_col <- ifelse(n_cols == 13, 7,
+                         ifelse(n_cols == 14, 8, NA))
+
+  # If unexpected column count, flag immediately
+  if (is.na(expected_temp_col)) {
+    return(tibble(
+      file = basename(ctd_files),
+      n_cols = n_cols,
+      has_date_col = NA,
+      temp_numeric_rate = NA,
+      temp_misaligned = TRUE,
+      flag = "Unexpected number of columns"
+    ))
+  }
+
+  # Extract the column that SHOULD be temperature
+  temp_col <- df[[expected_temp_col]]
+
+  # Calculate % numeric values in the temperature column
+  numeric_rate <- mean(suppressWarnings(!is.na(as.numeric(temp_col))))
+
+  # Heuristic: if <80% of the column is numeric, it’s likely misaligned
+  misaligned <- numeric_rate < 0.8
+
+  tibble(
+    file = basename(ctd_files),
+    n_cols = n_cols,
+    has_date_col = n_cols == 14,
+    temp_numeric_rate = numeric_rate,
+    temp_misaligned = misaligned,
+    flag = dplyr::case_when(
+      misaligned ~ "Temperature column misaligned",
+      n_cols == 14 ~ "Has date column (OK)",
+      n_cols == 13 ~ "No date column (OK)",
+      TRUE ~ "Unknown"
+    )
+  )
+}
+
+all_files <- list.files(path, full.names = TRUE, pattern = "_ctd\\.xls$")
+
+diagnostic_results <- purrr::map_dfr(all_files, diagnose_ctd_file)
+
+diagnostic_summary <- diagnostic_results %>%
+  count(flag)
+
+print(diagnostic_summary)
+
+problem_files <- diagnostic_results %>%
+  filter(temp_misaligned | flag == "Unexpected number of columns")
+
+print(problem_files)
+
+
+
+
+
+
+
+
+
+
 # Other methods of handling variable column numbers----
-# 1) initial method - doesnt handle column numbers 
+# 1) Option 1: initial method - doesnt handle column numbers ----
   # Function to read and clean one CTD file
   #read_and_extract_surface <- function(file) {
   #  df <- read_excel(file, na = "-999", col_names = FALSE) # read without column names
@@ -94,7 +166,10 @@ col_names <- c(
    # return(df_surface)
   #}
 
-# 2) Alternative method handling 13 or 14 columns - OBSERVATIONS 484447 (MORE THAN OPTION 3)
+# 2) ***Option 2***: Alternative method handling 13 or 14 columns - OBSERVATIONS 484447 (MORE THAN OPTION 3) ----
+
+ctd_files <-ctd_files[!basename(ctd_files) %in% "b20040_ctd.xls"] #getting rid of corrupted file 
+
 read_and_extract_surface <- function(file) {
    df <- read_excel(file, na = "-999", col_names = FALSE)
 
@@ -136,8 +211,7 @@ read_and_extract_surface <- function(file) {
   return(df_surface)
 }
 
-##################################### 
-# 3) Option 3 - alternative method to handling variable columns by dropping extra date column if present - OBSERVATIONS 484321 (LESS THAN OPTION 2)
+# 3) Option 3: alternative method to handling variable columns by dropping extra date column if present - OBSERVATIONS 484321 (LESS THAN OPTION 2) ----
 read_and_extract_surface <- function(file) {
   # Read without headers, treat -999 as NA
   df <- read_excel(file, na = "-999", col_names = FALSE)
@@ -177,7 +251,7 @@ read_and_extract_surface <- function(file) {
   return(df_surface)
 }
 
-############################################
+##########Continue ----
 #** Apply the function to every CTD file
 bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
 
@@ -188,6 +262,7 @@ bats_temp_surface <- bind_rows(bats_temp_surface)
 View(bats_temp_surface)
 summary(bats_temp_surface$depth_m) # checking range
 #Minimum = 1.97 (surface) and Maximum ≤ 200 = 199.68, so no depth >200 and the filtering worked YAY
+summary(bats_temp_surface$temperature_C) # checking temperature range
 length(unique(bats_temp_surface$cast_ID)) # checking number of unique casts combined
 # 5006
 
@@ -201,11 +276,9 @@ length(unique(bats_temp_surface$file_name)) # 447 - this is the number of indivi
 
 
 
-#### Visualizing general temperature trends ----
+#### Visualizing general trends ----
 
-
-# ----
-# Visualizing average surface temperature over time
+############  1) Visualizing average surface temperature over time 
 library(ggplot2)
 
 bats_temp_yearly <- bats_temp_surface %>%
@@ -233,8 +306,7 @@ summary(bats_temp_surface$decimal_year)
 range(bats_temp_surface$decimal_year)
 hist(bats_temp_surface$temperature_C, breaks = 50, main = "Temperature Distribution", xlab = "Temperature (°C)")
 
-
-#visualizing relationship between depth and temperature averaged across years by using bins of depth----
+############  2) Visualizing relationship between depth and temperature averaged across years by using bins of depth
 bats_temp_depth <- bats_temp_surface %>%
   group_by(depth_bin = cut(depth_m, breaks = seq(0, 200, by = 10))) %>% # create depth bins of 10m intervals
   summarise(mean_temp = mean(temperature_C, na.rm = TRUE), # calculate mean temperature for each depth bin
@@ -248,7 +320,7 @@ ggplot(bats_temp_depth, aes(x = mean_temp, y = mid_depth)) +
        title = "Average Temperature Profile by Depth at BATS") +
   theme_classic()
 
-#visualizing temperature with depth over time using a heatmap----
+############  3) Visualizing temperature with depth over time using a heatmap
 bats_temp_surface <- bats_temp_surface %>%
   mutate(year = floor(decimal_year),
          depth_bin = cut(depth_m, breaks = seq(0, 200, by = 10)))
@@ -267,12 +339,28 @@ ggplot(bats_temp_heatmap, aes(x = year, y = mid_depth, fill = mean_temp)) +
 
 
 
+#Making a clean data set for temperature and reducing rows by aggregating  -----
+# doing this like such: Data <-aggregate(temp ( metric to summarise) , by = deciyear, (function) mean) - rounding decimal year to be full number 
 
+# rounding decimal year to a whole number
+bats_temp_surface_clean <- bats_temp_surface %>%
+  mutate(decimal_year_whole = floor(decimal_year))
 
+bats_temp_FINAL<- bats_temp_surface_clean %>%
+  group_by(decimal_year_whole) %>% # grouping by decimal year 
+  summarise(mean_temp = mean(temperature_C, na.rm = TRUE)) # calculating mean temperature for each year
+View(bats_temp_FINAL)
 
+plot(mean_temp~decimal_year_whole, data=bats_temp_FINAL, type="b",
+     xlab="Decimal Year", ylab="Mean Surface Temperature (°C)",
+     main="Mean Surface Temperature at BATS Over Time")
+bats_temp_clean <- bats_temp_surface %>%
+  aggregate(temperature_C ~ decimal_year, data = ., FUN = mean, na.rm = TRUE) # aggregating temperature by decimal year to get mean temperature
 
+#save final bats_temp_Final to github 
+write.csv(bats_temp_FINAL, "Data/bats_temp_FINAL.csv", row.names = FALSE)
 
-####################### EXTRA ###############################################
+####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
 #but first figuring out what the date entails 
 min(bats_temp_surface$date)
