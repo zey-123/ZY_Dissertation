@@ -5,15 +5,16 @@ library(dplyr)
 BATS_pigments_1_ <- read_excel("Data/BATS_pigments (1).xlsx",na="-999")
 View(BATS_pigments_1_)
 
-# Cleaning the dataset ----
-#get rid of rows 1-49 and make the new row 1 column names
-BATS_pigments <- BATS_pigments_1_[-c(1:49), ]
+# Cleaning the dataset (BATS_pigments) ----
+
+BATS_pigments <- BATS_pigments_1_[-c(1:49), ] #get rid of rows 1-49 and make the new row 1 column names
 colnames(BATS_pigments) <- BATS_pigments[1, ] #set first row as column names
 BATS_pigments <- BATS_pigments[-1, ] #remove the first row which is now column names
 
 View(BATS_pigments)
 
-#using Chl column, standardize depth for chlorophyll a. Need to think of a way to normalize this across the water column as different things have different ranges and need to normalize this.
+# Creating a new data set (BATS_chla) with only year, depth, turners chlorophyll a data ----
+# Remember, aim is: using Chl column, standardize depth for chlorophyll a. Need to think of a way to normalize this across the water column as different things have different ranges and need to normalize this.
 BATS_chla <- BATS_pigments %>%
   select(yyyymmd, Depth, Chl) %>%
   na.omit()
@@ -21,6 +22,27 @@ View(BATS_chla)
 
 #round from decimal to whole number
 BATS_chla$Depth <- round(as.numeric(BATS_chla$Depth))
+BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
+BATS_chla$Chl   <- as.numeric(BATS_chla$Chl)
+
+str(BATS_chla$Chl)
+str(BATS_chla$Depth)
+
+
+# Trapezoidal integration ----
+# If  Depth values don’t start at 0 or end at 200 exactly, trapezoidal integration still handles it correctly.
+library(dplyr)
+library(pracma)
+
+# Filter depths 0–200 m and arrange
+BATS_filtered <- BATS_chla %>%
+  filter(Depth >= 0, Depth <= 200) %>%
+  arrange(Depth)
+
+# Depth-integrated chlorophyll (mg/m^2)
+Chl_int <- trapz(BATS_filtered$Depth, BATS_filtered$Chl)
+
+
 
 
 # Normalizing ----
