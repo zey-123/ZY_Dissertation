@@ -1,5 +1,6 @@
 library(readxl)
 library(dplyr)
+library(pracma)
 
 
 BATS_pigments_1_ <- read_excel("Data/BATS_pigments (1).xlsx",na="-999")
@@ -31,8 +32,6 @@ str(BATS_chla$Depth)
 
 # Trapezoidal integration ----
 # If  Depth values don’t start at 0 or end at 200 exactly, trapezoidal integration still handles it correctly.
-library(dplyr)
-library(pracma)
 
 # Filter depths 0–200 m and arrange
 BATS_filtered <- BATS_chla %>%
@@ -42,10 +41,28 @@ BATS_filtered <- BATS_chla %>%
 # Depth-integrated chlorophyll (mg/m^2)
 Chl_int <- trapz(BATS_filtered$Depth, BATS_filtered$Chl)
 
+# FINAL DECISION ----
+
+norm_chl <- BATS_chla %>%
+  filter(Depth >= 0, Depth <= 200) %>% # Filter depths 0–200 m
+  mutate(
+    Depth = as.numeric(Depth),
+    Chl   = as.numeric(Chl)
+  ) %>%
+  arrange(yyyymmd, Depth) %>%
+  group_by(yyyymmd) %>%
+  summarise(                      #summarise() collapses all rows for each cast into ONE row.
+    Chl_int = trapz(Depth, Chl),       # mg/m2
+    Chl_mean_200m = Chl_int / 200      # mg/m3 (depth-normalized)
+  )
+View(norm_chl)
+
+# visualizing time-series of depth-normalized chlorophyll
+plot(as.Date(norm_chl$yyyymmd, format="%Y%m%d"), norm_chl$Chl_mean_200m, type="l",
+     xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
+     main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")
 
 
-
-# Normalizing ----
 
 ### Step 1: Interpolation to a Standard Depth Grid (every 5 m from 0 m to 200 m.) ----
 
@@ -99,37 +116,10 @@ BATS_chla <- BATS_chla %>%
   filter(!is.na(Depth) & !is.na(Chl))
 
 
-# Depth Integration (z-score) ----
-# calculating the mean - Sum all the chlorophyll values in the BATS_chla dataset and divide by the number of data points.
-(mean_chla <- mean(BATS_chla$Chl, na.rm = TRUE))
-# calculating the standard deviation - Calculate the standard deviation of the chlorophyll values in the BATS_chla dataset.
-(sd_chla <- sd(BATS_chla$Chl, na.rm = TRUE))
-
-# calculating the z-score - For each chlorophyll value, subtract the mean and divide by the standard deviation.
-BATS_chla <- BATS_chla %>%
-  mutate(Chl_zscore = (Chl - mean_chla) / sd_chla)
-View(BATS_chla)
-
-#order dataset by depth
-BATS_chla <- BATS_chla %>%
-  arrange(Depth)
-View(BATS_chla)
 
 
 
-
-
-# Vertical integration
-# Compute depth-integrated chlorophyll by integration - zero as bottom of integration 200 as top Chl(z) dz then normalize by dividing integration depth to get an avg
-BATS_chla_depth_integrated <- BATS_chla %>%
-  group_by(yyyymmd) %>% # group by date
-  summarise(Depth_Integrated_Chl = sum(Chl, na.rm = TRUE) * (200 / n())) %>% # integrate and normalize
-  ungroup() # ungroup the data
-View(BATS_chla_depth_integrated)
-
-
-
-# Trying stuff out ----
+# Trying stuff out 
 #Step 1: Decide on reference depth as 200m and Interpolate each cast onto a standard depth grid. ----
 standard_depths <- seq(0, 200, by = 1) # Standard depth grid from 0 to 200 m at 1 m intervals
 BATS_chla_interpolated <- BATS_chla %>%
@@ -167,4 +157,99 @@ plot(as.Date(chl_depth_avg$yyyymmd, format="%Y%m%d"), chl_depth_avg$Depth_Avg_Ch
      main="Time-series of Depth-averaged Normalized Chlorophyll a")
 
 # Step 4: Seasonal pattern analysis ----
+
+
+# Depth Integration (z-score) ----
+# calculating the mean - Sum all the chlorophyll values in the BATS_chla dataset and divide by the number of data points.
+(mean_chla <- mean(BATS_chla$Chl, na.rm = TRUE))
+# calculating the standard deviation - Calculate the standard deviation of the chlorophyll values in the BATS_chla dataset.
+(sd_chla <- sd(BATS_chla$Chl, na.rm = TRUE))
+
+# calculating the z-score - For each chlorophyll value, subtract the mean and divide by the standard deviation.
+BATS_chla <- BATS_chla %>%
+  mutate(Chl_zscore = (Chl - mean_chla) / sd_chla)
+View(BATS_chla)
+
+#order dataset by depth
+BATS_chla <- BATS_chla %>%
+  arrange(Depth)
+View(BATS_chla)
+
+# ------
+# Vertical integration
+# Compute depth-integrated chlorophyll by integration - zero as bottom of integration 200 as top Chl(z) dz then normalize by dividing integration depth to get an avg
+BATS_chla_depth_integrated <- BATS_chla %>%
+  group_by(yyyymmd) %>% # group by date
+  summarise(Depth_Integrated_Chl = sum(Chl, na.rm = TRUE) * (200 / n())) %>% # integrate and normalize
+  ungroup() # ungroup the data
+View(BATS_chla_depth_integrated)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(dplyr)
+library(pracma)   # for trapz
+library(purrr)    # for map()
+library(tidyr)
+
+# --------------------------
+# 1. Load and prepare data
+# --------------------------
+# Your dataset: BATS_chla has columns yyyymmd, Depth, Chl
+df <- BATS_chla %>%
+  arrange(yyyymmd, Depth)
+
+# Create standard depth grid
+std_depths <- seq(0, 200, by = 5)
+
+# --------------------------
+# 2. Function: process one cast
+# --------------------------
+process_cast <- function(cast_df) {
+  
+  # interpolate Chl onto standard depth grid
+  interp <- approx(
+    x = cast_df$Depth,
+    y = cast_df$Chl,
+    xout = std_depths,
+    rule = 2   # carry nearest value beyond range
+  )
+  
+  # integrated chlorophyll (mg m^-2)
+  chl_int <- trapz(interp$x, interp$y)
+  
+  # depth-averaged chlorophyll (mg m^-3)
+  chl_avg <- chl_int / 200   # because integrating over 0–200 m
+  
+  tibble(
+    yyyymmd = unique(cast_df$yyyymmd),
+    integrated_chl = chl_int,
+    depth_avg_chl = chl_avg,
+    depth = interp$x,
+    chl_interp = interp$y
+  )
+}
+
+# --------------------------
+# 3. Apply to each CAST
+# --------------------------
+results <- df %>%
+  group_by(yyyymmd) %>%      # one cast per unique date/time
+  group_modify(~ process_cast(.x))
+
+# --------------------------
+# 4. Final output:
+#     one row per depth per cast
+# --------------------------
+results
 
