@@ -59,6 +59,8 @@ View(norm_chl)
 
 #date is written as yyyymmdd - fixing date format
 norm_chl$yyyymmd <- as.Date(as.character(norm_chl$yyyymmd), format="%Y%m%d")
+norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
+norm_chl$Year <- format(norm_chl$yyyymmd, "%Y") # Extract year
                             
 
 # Visualizing time-series of depth-normalized chlorophyll ----
@@ -66,7 +68,7 @@ plot(as.Date(norm_chl$yyyymmd, format="%Y%m%d"), norm_chl$Chl_mean_200m, type="l
      xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
      main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")
 
-### a) Time-series plot of raw time-series — can see seasonal cycles and long-term changes.----
+### a) Time-series plot of time-series depth normalized chlorophyll — can see seasonal cycles and long-term changes.----
 ggplot(norm_chl, aes(x = yyyymmd, y = Chl_mean_200m)) +
   geom_line(color = "darkblue") +
   geom_smooth(method = "lm", color = "blue", se = FALSE) +
@@ -93,8 +95,20 @@ ggplot(chl_monthly, aes(x = Month, y = MonthlyAvgBiomass)) + # x is month (1-12)
   theme_classic()
 
 
-
-
+### c) Annual pattern (yearly averages) ----
+str(chl_yearly)
+chl_yearly <- norm_chl %>% 
+  group_by(Year) %>% 
+  summarise(YearlyAvgBiomass = mean(Chl_mean_200m, na.rm = TRUE)) %>%  #calculating avg per year
+  ungroup()
+# Plot yearly averages
+ggplot(chl_yearly, aes(x = Year, y = YearlyAvgBiomass, group=1)) +
+  geom_line(color = "purple") +
+  geom_point() +
+  labs(title = "Annual Mean Phytoplankton (Chl) Biomass (0–200m) at BATS",
+       x = "Year",
+       y = "Average Chl (mg/m³, normalized to 200m)") +
+  theme_classic()
 
 
 
