@@ -14,7 +14,7 @@ BATS_pigments <- BATS_pigments[-1, ] #remove the first row which is now column n
 
 View(BATS_pigments)
 
-# Creating a new data set (BATS_chla) with only year, depth, turners chlorophyll a data ----
+### Creating a new data set (BATS_chla) with only year, depth, turners chlorophyll a data ----
 # Remember, aim is: using Chl column, standardize depth for chlorophyll a. Need to think of a way to normalize this across the water column as different things have different ranges and need to normalize this.
 BATS_chla <- BATS_pigments %>%
   select(yyyymmd, Depth, Chl) %>%
@@ -57,13 +57,51 @@ norm_chl <- BATS_chla %>%
   )
 View(norm_chl)
 
-# visualizing time-series of depth-normalized chlorophyll
+#date is written as yyyymmdd - fixing date format
+norm_chl$yyyymmd <- as.Date(as.character(norm_chl$yyyymmd), format="%Y%m%d")
+                            
+
+# Visualizing time-series of depth-normalized chlorophyll ----
 plot(as.Date(norm_chl$yyyymmd, format="%Y%m%d"), norm_chl$Chl_mean_200m, type="l",
      xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
      main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")
 
+### a) Time-series plot of raw time-series — can see seasonal cycles and long-term changes.----
+ggplot(norm_chl, aes(x = yyyymmd, y = Chl_mean_200m)) +
+  geom_line(color = "darkblue") +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Phytoplankton Biomass (0–200m) Over Time at BATS",
+       x = "Date",
+       y = "Chlorophyll Mean (mg/m³, normalized to 200m)") +
+  theme_classic()
+
+### b) Seasonal pattern (montly averages) -----
+norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
+norm_chl$Month <- as.numeric(norm_chl$Month) # Convert to numeric
+chl_monthly <- norm_chl %>% 
+  group_by(Month) %>% 
+  summarise(MonthlyAvgBiomass = mean(Chl_mean_200m, na.rm = TRUE)) %>% 
+  ungroup()
+# Plot monthly averages
+ggplot(chl_monthly, aes(x = Month, y = MonthlyAvgBiomass)) + # x is month (1-12)
+  geom_line(color = "darkgreen") +
+  geom_point() +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(title = "Monthly Mean Phytoplankton (Chl) Biomass (0–200m) at BATS",
+       x = "Month",
+       y = "Average Chl (mg/m³, normalized to 200m)") +
+  theme_classic()
 
 
+
+
+
+
+
+
+
+
+# ------------------------ OTHER APPROACHES -------------------------------------------
 ### Step 1: Interpolation to a Standard Depth Grid (every 5 m from 0 m to 200 m.) ----
 
 # Group by unique depths and average chlorophyll values if duplicates exist
@@ -120,7 +158,7 @@ BATS_chla <- BATS_chla %>%
 
 
 # Trying stuff out 
-#Step 1: Decide on reference depth as 200m and Interpolate each cast onto a standard depth grid. ----
+### Step 1: Decide on reference depth as 200m and Interpolate each cast onto a standard depth grid. ----
 standard_depths <- seq(0, 200, by = 1) # Standard depth grid from 0 to 200 m at 1 m intervals
 BATS_chla_interpolated <- BATS_chla %>%
   group_by(yyyymmd) %>%
@@ -132,7 +170,7 @@ BATS_chla_interpolated <- BATS_chla %>%
 View(BATS_chla_interpolated)
 
 
-#Step 2: Normalize either: By depth-integrated chlorophyll (average over layer) OR Z-score per depth OR Relative to total chlorophyll in upper layer ----
+### Step 2: Normalize either: By depth-integrated chlorophyll (average over layer) OR Z-score per depth OR Relative to total chlorophyll in upper layer ----
 BATS_chla_normalized <- BATS_chla_interpolated %>%
   group_by(yyyymmd) %>%
   mutate(Total_Chl = sum(Chl, na.rm = TRUE),
@@ -140,7 +178,7 @@ BATS_chla_normalized <- BATS_chla_interpolated %>%
   ungroup()
 View(BATS_chla_normalized)
 
-#Step 3: Visualize time-series at specific depths or depth-averaged ----
+### Step 3: Visualize time-series at specific depths or depth-averaged ----
 # Example: Time-series at 10m depth
 chl_10m <- BATS_chla_normalized %>%
   filter(Depth == 10)
@@ -156,10 +194,10 @@ plot(as.Date(chl_depth_avg$yyyymmd, format="%Y%m%d"), chl_depth_avg$Depth_Avg_Ch
      xlab="Date", ylab="Depth-averaged Normalized Chlorophyll a",
      main="Time-series of Depth-averaged Normalized Chlorophyll a")
 
-# Step 4: Seasonal pattern analysis ----
+### Step 4: Seasonal pattern analysis ----
 
 
-# Depth Integration (z-score) ----
+### Depth Integration (z-score) ----
 # calculating the mean - Sum all the chlorophyll values in the BATS_chla dataset and divide by the number of data points.
 (mean_chla <- mean(BATS_chla$Chl, na.rm = TRUE))
 # calculating the standard deviation - Calculate the standard deviation of the chlorophyll values in the BATS_chla dataset.
@@ -176,8 +214,8 @@ BATS_chla <- BATS_chla %>%
 View(BATS_chla)
 
 # ------
-# Vertical integration
-# Compute depth-integrated chlorophyll by integration - zero as bottom of integration 200 as top Chl(z) dz then normalize by dividing integration depth to get an avg
+### Vertical integration
+### Compute depth-integrated chlorophyll by integration - zero as bottom of integration 200 as top Chl(z) dz then normalize by dividing integration depth to get an avg
 BATS_chla_depth_integrated <- BATS_chla %>%
   group_by(yyyymmd) %>% # group by date
   summarise(Depth_Integrated_Chl = sum(Chl, na.rm = TRUE) * (200 / n())) %>% # integrate and normalize
@@ -186,70 +224,4 @@ View(BATS_chla_depth_integrated)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-library(dplyr)
-library(pracma)   # for trapz
-library(purrr)    # for map()
-library(tidyr)
-
-# --------------------------
-# 1. Load and prepare data
-# --------------------------
-# Your dataset: BATS_chla has columns yyyymmd, Depth, Chl
-df <- BATS_chla %>%
-  arrange(yyyymmd, Depth)
-
-# Create standard depth grid
-std_depths <- seq(0, 200, by = 5)
-
-# --------------------------
-# 2. Function: process one cast
-# --------------------------
-process_cast <- function(cast_df) {
-  
-  # interpolate Chl onto standard depth grid
-  interp <- approx(
-    x = cast_df$Depth,
-    y = cast_df$Chl,
-    xout = std_depths,
-    rule = 2   # carry nearest value beyond range
-  )
-  
-  # integrated chlorophyll (mg m^-2)
-  chl_int <- trapz(interp$x, interp$y)
-  
-  # depth-averaged chlorophyll (mg m^-3)
-  chl_avg <- chl_int / 200   # because integrating over 0–200 m
-  
-  tibble(
-    yyyymmd = unique(cast_df$yyyymmd),
-    integrated_chl = chl_int,
-    depth_avg_chl = chl_avg,
-    depth = interp$x,
-    chl_interp = interp$y
-  )
-}
-
-# --------------------------
-# 3. Apply to each CAST
-# --------------------------
-results <- df %>%
-  group_by(yyyymmd) %>%      # one cast per unique date/time
-  group_modify(~ process_cast(.x))
-
-# --------------------------
-# 4. Final output:
-#     one row per depth per cast
-# --------------------------
-results
 
