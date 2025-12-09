@@ -4,4 +4,6 @@
 
 * **bats_temp_final**: final temperature dataset (made from merging BATS CTD data files) 
 
-* **norm_chl**: phytoplankton dataset - depth integrated and normalized for 200m using turners chlorophyll index values from BATS_pigments excel file (obtained from BATS website).
+* **norm_chl**: phytoplankton finalised dataset - depth integrated and normalized for 200m using turners chlorophyll index values from BATS_pigments excel file (obtained from BATS website).
+
+* **zoop_daily**: zooplankton finalised dataset
