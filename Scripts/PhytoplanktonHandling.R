@@ -111,6 +111,8 @@ ggplot(chl_yearly, aes(x = Year, y = YearlyAvgBiomass, group=1)) +
   theme_classic()
 
 
+#save norm_chl to dataset folder - github
+write.csv(norm_chl, "Data/norm_chl.csv", row.names = FALSE)
 
 
 

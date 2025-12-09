@@ -86,6 +86,10 @@ ggplot(zoop_yearly, aes(x = Year, y = YearlyAvgBiomass)) +
   theme_classic()
 
 
+
+#save zoop_daily to dataset folder - github
+write.csv(zoop_daily, "zoop_daily.csv", row.names = FALSE)
+
 # Depth integrate (sum biomass per sampling event) ----
 # Adjust biomass column name accordingly
 zooplankton_integrated <- zooplankton_filtered %>%
