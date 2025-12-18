@@ -25,10 +25,9 @@ View(BATS_chla)
 BATS_chla$Depth <- round(as.numeric(BATS_chla$Depth))
 BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
 BATS_chla$Chl   <- as.numeric(BATS_chla$Chl)
-BATS_chla$yyyymmd <- as.numeric(BATS_chla$yyyymmd)
+#BATS_chla$yyyymmd <- as.numeric(BATS_chla$yyyymmd)
 
 #BATS_chla$yyyymmd <- ymd(BATS_chla$yyyymmd)
-
 
 str(BATS_chla$Chl)
 str(BATS_chla$Depth)
@@ -63,9 +62,9 @@ View(norm_chl)
 
 #date is written as yyyymmdd - fixing date format
 
-norm_chl$yyyymmd <- as.Date(norm_chl$yyyymmd, format="%Y%m%d")
-norm_chl$yyyymmd <- ymd(norm_chl$yyyymmd)
-norm_chl$yyymmd <- as.numeric (norm_chl$yyyymmd)
+#norm_chl$yyyymmd <- as.Date(norm_chl$yyyymmd, format="%Y%m%d")
+#norm_chl$yyyymmd <- ymd(norm_chl$yyyymmd)
+#norm_chl$yyymmd <- as.numeric (norm_chl$yyyymmd)
 
 #norm_chl$yyyymmd <- as.Date(as.character(norm_chl$yyyymmd), format="%Y%m%d")
 #norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
@@ -90,10 +89,10 @@ colnames(norm_chl)[6] <- "Day"
 
 
 
-
 # Visualizing time-series of depth-normalized chlorophyll ----
 plot(norm_chl$Date,norm_chl$Chl_mean_200m_mg_m3, type="l",
      xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
+    # ylim=c(0,0.5),
      main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")                            
 
 ### a) Time-series plot of time-series depth normalized chlorophyll — can see seasonal cycles and long-term changes.----
@@ -139,8 +138,60 @@ ggplot(chl_yearly, aes(x = Year, y = YearlyAvgBiomass, group=1)) +
   theme_classic()
 
 
-#save norm_chl to dataset folder - github
+
+# Dealing with the outliers -----
+#identifying points greater than 1 mg/m3
+outliers <- norm_chl %>%
+  filter(Chl_mean_200m_mg_m3 > 1)
+View(outliers)
+
+# IQR test to statistically check for whether these are actually outliers (without assuming normality)
+chl <- norm_chl$Chl_mean_200m_mg_m3
+
+Q1 <- quantile(chl, 0.25, na.rm = TRUE)
+Q3 <- quantile(chl, 0.75, na.rm = TRUE)
+IQR_val <- Q3 - Q1
+
+upper_bound <- Q3 + 1.5 * IQR_val
+lower_bound <- Q1 - 1.5 * IQR_val
+
+outliers_iqr <- norm_chl %>%
+  filter(Chl_mean_200m_mg_m3 > upper_bound |
+           Chl_mean_200m_mg_m3 < lower_bound)
+outliers_iqr
+
+#Remove outliers based on IQR
+norm_chl <- norm_chl %>%
+  filter(Chl_mean_200m_mg_m3 <= upper_bound &
+  Chl_mean_200m_mg_m3 >= lower_bound)
+
+
+
+#checking for normality ----
+hist(norm_chl$Chl_mean_200m_mg_m3, breaks=50,
+     main="Histogram of Depth-normalized Chlorophyll a (0-200 m) after Outlier Removal",
+     xlab="Depth-normalized Chlorophyll a (mg/m3)",
+     col="lightblue")
+
+#check if this is normal 
+shapiro.test(norm_chl$Chl_mean_200m_mg_m3) #p-value < 0.05, data is not normally distributed
+
+lm_normchl<-lm(Chl_mean_200m_mg_m3~Year, data=norm_chl)
+plot(lm_normchl)
+
+
+#save norm_chl to dataset folder - github ----
 write.csv(norm_chl, "Data/norm_chl.csv", row.names = FALSE)
+
+
+
+
+
+
+
+
+
+
 
 
 

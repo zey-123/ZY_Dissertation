@@ -1,43 +1,58 @@
 # Importing datasets & libraries ----
 library(readr)
+library(data.table)
+?data.table
 norm_chl <- read_csv("Data/norm_chl.csv")
 zoop_daily <- read_csv("Data/zoop_daily.csv")
+temperature <- read_csv("Data/BATS_temp_FINAL.csv")
 
 # Calculating Phenological Indices (Ji et al., 2010)
 
+
 # 1) Bloom start date: date when chlorophyll concentration first exceeds a threshold value (e.g., mean + 1 standard deviation of the annual cycle) and remains above it for a specified duration (e.g., 7 days).----
 ### Phytoplankton: Year day when biomass rise above certain threshold value; often used for indexing phytoplankton.	----
-
-calculate_bloom_start_phytoplankton <- function(data, threshold_multiplier = 1, duration = 7) { # threshold_multiplier: number of standard deviations above mean; duration: number of consecutive days
+# The function finds the first day each year when biomass exceeds a year-specific threshold for at least a set number of consecutive days.
+calculate_bloom_start_phytoplankton <- function(data, threshold_multiplier = 1, duration = 2) { # threshold_multiplier: number of standard deviations above mean; duration: number of consecutive days
   data <- data %>%
-    mutate(Year = as.numeric(format(Date, "%Y")),
+    mutate(Year, # labelling each observation with 1)which year it belongs to and 2)which day of the year it is.
            DayOfYear = as.numeric(format(Date, "%j")))
   
-  bloom_starts <- data %>%
-    group_by(Year) %>%
-    arrange(Date) %>%
-    mutate(Threshold = mean(Biomass, na.rm = TRUE) + threshold_multiplier * sd(Biomass, na.rm = TRUE),
-           AboveThreshold = Biomass > Threshold,
-           ConsecutiveDays = rle(AboveThreshold)$lengths * rle(AboveThreshold)$values) %>%
-    filter(ConsecutiveDays >= duration & AboveThreshold) %>%
-    slice(1) %>%
+  bloom_starts <- data %>% 
+    group_by(Year) %>% #Bloom timing is calculated separately for each year.
+    arrange(Date) %>% #So “consecutive days” actually means consecutive in time.
+    mutate(Threshold = mean(Biomass, na.rm = TRUE) + threshold_multiplier * sd(Biomass, na.rm = TRUE), #This creates one threshold per year.
+           AboveThreshold = Biomass > Threshold, #TRUE → bloom-level biomass, FALSE → not bloom-level
+           RunID = cumsum(AboveThreshold != lag(AboveThreshold, default = first(AboveThreshold)))) %>%   # Create a run ID that increases every time AboveThreshold changes (so looks at today vs yesterday if T/F changes, starts a new run BUT if T/F stays the same, continues run)
+    group_by(Year, RunID) %>% #counting how long each run lasts 
+    mutate(RunLength = n()) %>% #number of days in each run
+    ungroup() %>% 
+    filter( AboveThreshold, RunLength >= duration) %>% #only keep days above threshold 
+    group_by(Year) %>% 
+    slice(1) %>% # gives the first day of the first valid bloom each year.
     select(Year, BloomStartDay = DayOfYear)
   
   return(bloom_starts)
 }
-bloom_start_phytoplankton <- calculate_bloom_start_phytoplankton(norm_chl %>% rename(Date = yyyymmd, Biomass = Chl_mean_200m))
+
+bloom_start_phytoplankton <- calculate_bloom_start_phytoplankton(norm_chl %>% rename(Date = Date,Biomass = Chl_mean_200m_mg_m3))
 # View results
 print(bloom_start_phytoplankton)
 #visualize
 ggplot(bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay)) +
   geom_line(color = "navy") +
   geom_point() +
+  geom_smooth(method = "lm", color = "navy", linetype = "dashed",se = FALSE) +
   labs(title = "Phytoplankton Bloom Start Day Over Years",
        x = "Year",
        y = "Bloom Start Day of Year") +
-  theme_minimal()
-  
+  theme_classic()
 
+#incorporate temperature data to visualize phenology with temperature
+
+  
+#The zooplankton method works cleanly in dplyr because it is based on cumulative thresholds, 
+# while phytoplankton bloom detection requires identifying sustained consecutive periods, 
+#which is why run-detection logic (and not simple mutate()) is needed.
 
 
 ### Zooplankton: Year day when a lower threshold percentile (e.g. 25th percentile) of annual or seasonal cumulative biomass or abundance is reached; used for indexing zooplankton.	----
@@ -78,7 +93,7 @@ ggplot(bloom_start_zooplankton, aes(x = Year, y = BloomStartDay)) +
 # Function to calculate bloom peak date for phytoplankton
 calculate_bloom_peak_phytoplankton <- function(data) {
   data <- data %>%
-    mutate(Year = as.numeric(format(Date, "%Y")),
+    mutate(Year,
            DayOfYear = as.numeric(format(Date, "%j")))
   
   bloom_peaks <- data %>%
@@ -88,7 +103,7 @@ calculate_bloom_peak_phytoplankton <- function(data) {
   
   return(bloom_peaks)
 }
-bloom_peak_phytoplankton <- calculate_bloom_peak_phytoplankton(norm_chl %>% rename(Date = yyyymmd, Biomass = Chl_mean_200m))
+bloom_peak_phytoplankton <- calculate_bloom_peak_phytoplankton(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
 # View results
 print(bloom_peak_phytoplankton)
 #visualize
@@ -135,6 +150,41 @@ summary(lm(BloomPeakDay ~ Year, data = bloom_peak_zooplankton))
 # Number of days between bloom “start” and “end” of season percentile thresholds.	
 
 ### Phytoplankton: Function to calculate bloom duration for phytoplankton ----
+calculate_bloom_duration_phytoplankton <- function(data, threshold_multiplier = 1) { # threshold_multiplier: number of standard deviations above mean
+  data <- data %>%
+    mutate(Year, DayOfYear = Date)
+  
+  bloom_durations <- data %>%
+    group_by(Year) %>%
+    arrange(Date) %>%
+    mutate(Threshold = mean(Biomass, na.rm = TRUE) + threshold_multiplier * sd(Biomass, na.rm = TRUE),
+           AboveThreshold = Biomass > Threshold,
+           RunID = cumsum(AboveThreshold != lag(AboveThreshold, default = first(AboveThreshold)))) %>%
+    group_by(Year, RunID) %>%
+    mutate(RunLength = n()) %>%
+    ungroup() %>%
+    filter(AboveThreshold) %>%
+    summarise(
+      BloomStartDay = min(DayOfYear),
+      BloomEndDay = max(DayOfYear),
+      BloomDuration = BloomEndDay - BloomStartDay
+    ) %>%
+    ungroup()
+  
+  return(bloom_durations)
+}
+bloom_duration_phytoplankton <- calculate_bloom_duration_phytoplankton(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
+# View results
+print(bloom_duration_phytoplankton)
+#visualize
+ggplot(bloom_duration_phytoplankton, aes(x = Year, y = BloomDuration)) +
+  geom_line(color = "navy") +
+  geom_point() +
+  geom_smooth(method = "lm", color = "navy", linetype = "dashed", se = FALSE) +
+  labs(title = "Phytoplankton Bloom Duration Over Years",
+       x = "Year",
+       y = "Bloom Duration (days)") +
+  theme_classic()
 
 
 ### Zooplankton: Function to calculate bloom duration for zooplankton ----
