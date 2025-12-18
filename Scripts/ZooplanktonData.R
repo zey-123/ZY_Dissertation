@@ -38,12 +38,36 @@ colnames(zooplankton_filtered)
 # Convert biomass column to numeric
 zooplankton_filtered$TotalDryNorm200 <- as.numeric(zooplankton_filtered$TotalDryNorm200)
 
+
 # Aggregate to one value per date (mean or sum, depending on definition)
 zoop_daily <- zooplankton_filtered %>%
   group_by(date) %>% #Take all the rows that have the same date and treat them as one group. 
   summarise(DryBiomass = mean(TotalDryNorm200, na.rm = TRUE)) %>% # average of TotalDryNorm200 for that day.
   ungroup()
 
+# IQR test to statistically check for outliers (without assuming normality) ----
+zoop <- zoop_daily$DryBiomass
+
+Q1 <- quantile(zoop, 0.25, na.rm = TRUE)
+Q3 <- quantile(zoop, 0.75, na.rm = TRUE)
+IQR_val <- Q3 - Q1
+
+upper_bound <- Q3 + 1.5 * IQR_val
+lower_bound <- Q1 - 1.5 * IQR_val
+
+outliers_iqr <- zoop_daily %>%
+  filter(DryBiomass > upper_bound |
+           DryBiomass < lower_bound)
+outliers_iqr
+
+#Remove outliers based on IQR
+zoop_daily <- zoop_daily %>%
+  filter(DryBiomass <= upper_bound &
+           DryBiomass >= lower_bound)
+
+
+plot(zoop_daily$date,zoop_daily$DryBiomass, type="l")
+     
 ggplot(zoop_daily, aes(x = date, y = DryBiomass)) +
   geom_line(color = "darkblue") +
   geom_smooth(method = "lm", color = "blue", se = FALSE) +
