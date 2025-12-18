@@ -25,6 +25,10 @@ View(BATS_chla)
 BATS_chla$Depth <- round(as.numeric(BATS_chla$Depth))
 BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
 BATS_chla$Chl   <- as.numeric(BATS_chla$Chl)
+BATS_chla$yyyymmd <- as.numeric(BATS_chla$yyyymmd)
+
+#BATS_chla$yyyymmd <- ymd(BATS_chla$yyyymmd)
+
 
 str(BATS_chla$Chl)
 str(BATS_chla$Depth)
@@ -58,15 +62,29 @@ norm_chl <- BATS_chla %>%
 View(norm_chl)
 
 #date is written as yyyymmdd - fixing date format
-norm_chl$yyyymmd <- as.Date(as.character(norm_chl$yyyymmd), format="%Y%m%d")
-norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
-norm_chl$Year <- format(norm_chl$yyyymmd, "%Y") # Extract year
-                            
+
+norm_chl$yyyymmd <- as.Date(norm_chl$yyyymmd, format="%Y%m%d")
+norm_chl$yyyymmd <- ymd(norm_chl$yyyymmd)
+norm_chl$yyymmd <- as.numeric (norm_chl$yyyymmd)
+
+#norm_chl$yyyymmd <- as.Date(as.character(norm_chl$yyyymmd), format="%Y%m%d")
+#norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
+#norm_chl$Year <- format(norm_chl$yyyymmd, "%Y") # Extract year
+
+
+library(lubridate)
+
+norm_chl$yyyymmd <- ymd(norm_chl$yyyymmd)
+
+norm_chl$year  <- year(norm_chl$yyyymmd)
+norm_chl$month <- month(norm_chl$yyyymmd)
+norm_chl$day   <- day(norm_chl$yyyymmd)
+
 
 # Visualizing time-series of depth-normalized chlorophyll ----
-plot(as.Date(norm_chl$yyyymmd, format="%Y%m%d"), norm_chl$Chl_mean_200m, type="l",
+plot(norm_chl$yyyymmd,norm_chl$Chl_mean_200m, type="l",
      xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
-     main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")
+     main="Time-series of Depth-normalized Chlorophyll a (0-200 m)")                            
 
 ### a) Time-series plot of time-series depth normalized chlorophyll — can see seasonal cycles and long-term changes.----
 ggplot(norm_chl, aes(x = yyyymmd, y = Chl_mean_200m)) +
@@ -78,14 +96,14 @@ ggplot(norm_chl, aes(x = yyyymmd, y = Chl_mean_200m)) +
   theme_classic()
 
 ### b) Seasonal pattern (montly averages) -----
-norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
-norm_chl$Month <- as.numeric(norm_chl$Month) # Convert to numeric
+#norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
+#norm_chl$Month <- as.numeric(norm_chl$Month) # Convert to numeric
 chl_monthly <- norm_chl %>% 
-  group_by(Month) %>% 
+  group_by(month) %>% 
   summarise(MonthlyAvgBiomass = mean(Chl_mean_200m, na.rm = TRUE)) %>% 
   ungroup()
 # Plot monthly averages
-ggplot(chl_monthly, aes(x = Month, y = MonthlyAvgBiomass)) + # x is month (1-12)
+ggplot(chl_monthly, aes(x = month, y = MonthlyAvgBiomass)) + # x is month (1-12)
   geom_line(color = "darkgreen") +
   geom_point() +
   scale_x_continuous(breaks = 1:12, labels = month.abb) +
@@ -98,11 +116,11 @@ ggplot(chl_monthly, aes(x = Month, y = MonthlyAvgBiomass)) + # x is month (1-12)
 ### c) Annual pattern (yearly averages) ----
 str(chl_yearly)
 chl_yearly <- norm_chl %>% 
-  group_by(Year) %>% 
+  group_by(year) %>% 
   summarise(YearlyAvgBiomass = mean(Chl_mean_200m, na.rm = TRUE)) %>%  #calculating avg per year
   ungroup()
 # Plot yearly averages
-ggplot(chl_yearly, aes(x = Year, y = YearlyAvgBiomass, group=1)) +
+ggplot(chl_yearly, aes(x = year, y = YearlyAvgBiomass, group=1)) +
   geom_line(color = "purple") +
   geom_point() +
   labs(title = "Annual Mean Phytoplankton (Chl) Biomass (0–200m) at BATS",
