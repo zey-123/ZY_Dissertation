@@ -11,11 +11,10 @@ temperature <- read_csv("Data/BATS_temp_FINAL.csv")
 # 1) Bloom start date: date when chlorophyll concentration first exceeds a threshold value (e.g., mean + 1 standard deviation of the annual cycle) and remains above it for a specified duration (e.g., 7 days).----
 ### Phytoplankton: Year day when biomass rise above certain threshold value; often used for indexing phytoplankton.	----
 # The function finds the first day each year when biomass exceeds a year-specific threshold for at least a set number of consecutive days.
-calculate_bloom_start_phytoplankton <- function(data, threshold_multiplier = 1, duration = 2) { # threshold_multiplier: number of standard deviations above mean; duration: number of consecutive days
+calculate_bloom_start_phytoplankton <- function(data, threshold_multiplier = 1, duration = 2) { # threshold_multiplier: number of standard deviations above mean; duration: number of consecutive days (“Due to the temporal resolution of the dataset, a minimum duration of two consecutive observations was required…)
   data <- data %>%
-    mutate(Year, # labelling each observation with 1)which year it belongs to and 2)which day of the year it is.
+    mutate(Year = as.numeric(format(Date, "%Y")), # labelling each observation with 1)which year it belongs to and 2)which day of the year it is.
            DayOfYear = as.numeric(format(Date, "%j")))
-  
   bloom_starts <- data %>% 
     group_by(Year) %>% #Bloom timing is calculated separately for each year.
     arrange(Date) %>% #So “consecutive days” actually means consecutive in time.
