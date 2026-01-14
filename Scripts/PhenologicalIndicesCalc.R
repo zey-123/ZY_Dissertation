@@ -219,3 +219,204 @@ ggplot(bloom_duration_zooplankton, aes(x = Year, y = BloomDuration)) +
        x = "Year",
        y = "Bloom Duration (days)") +
   theme_classic()
+
+# More Phenological Graphs -----
+
+# Phytoplankton Bloom Start vs Zooplankton Bloom Start
+phytoplankton_zooplankton_start <- bloom_start_phytoplankton %>%
+  inner_join(bloom_start_zooplankton, by = "Year", suffix = c("_Phytoplankton", "_Zooplankton"))
+# Scatter plot
+ggplot(phytoplankton_zooplankton_start, aes(x = BloomStartDay_Phytoplankton, y = BloomStartDay_Zooplankton)) +
+  geom_point(color = "navy") +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Phytoplankton vs Zooplankton Bloom Start Days",
+       x = "Phytoplankton Bloom Start Day of Year",
+       y = "Zooplankton Bloom Start Day of Year") +
+  theme_classic()
+
+# Phytoplankton Bloom Peak vs Zooplankton Bloom Peak
+phytoplankton_zooplankton_peak <- bloom_peak_phytoplankton %>%
+  inner_join(bloom_peak_zooplankton, by = "Year", suffix = c("_Phytoplankton", "_Zooplankton"))
+# Scatter plot
+ggplot(phytoplankton_zooplankton_peak, aes(x = BloomPeakDay_Phytoplankton, y = BloomPeakDay_Zooplankton)) +
+  geom_point(color = "forestgreen") +
+  geom_smooth(method = "lm", color = "darkgreen", se = FALSE) +
+  labs(title = "Phytoplankton vs Zooplankton Bloom Peak Days",
+       x = "Phytoplankton Bloom Peak Day of Year",
+       y = "Zooplankton Bloom Peak Day of Year") +
+  theme_classic()
+
+# Phytoplankton Bloom Duration vs Zooplankton Bloom Duration
+phytoplankton_zooplankton_duration <- bloom_duration_phytoplankton %>%
+  inner_join(bloom_duration_zooplankton, by = "Year", suffix = c("_Phytoplankton", "_Zooplankton"))
+# Scatter plot
+ggplot(phytoplankton_zooplankton_duration, aes(x = BloomDuration_Phytoplankton, y = BloomDuration_Zooplankton)) +
+  geom_point(color = "red") +
+  geom_smooth(method = "lm", color = "darkred", se = FALSE) +
+  labs(title = "Phytoplankton vs Zooplankton Bloom Durations",
+       x = "Phytoplankton Bloom Duration (days)",
+       y = "Zooplankton Bloom Duration (days)") +
+  theme_classic()
+
+
+# Phenology vs Temperature ----
+library(readr)
+bats_temp_FINAL <- read_csv("Data/bats_temp_FINAL.csv")
+View(bats_temp_FINAL)
+
+# Fixing the temperature dataframe and making it easier to work with 
+bats_temp_FINAL <- bats_temp_FINAL %>%
+  rename(Year = decimal_year_whole,
+         MeanTemp = mean_temp)
+
+### BLOOM START ----
+# Phytoplankton Bloom Start vs Temperature (Year color gradient)
+phyto_temp_plot <- bloom_start_phytoplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+
+ggplot(phyto_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomStartDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton Bloom Start vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Start Day of Year",
+       color = "Year") +
+  theme_classic()
+
+# Zooplankton Bloom Start vs Temperature (Year color gradient)
+zoop_temp_plot <- bloom_start_zooplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+
+ggplot(zoop_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomStartDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Zooplankton Bloom Start vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Start Day of Year",
+       color = "Year") +
+  theme_classic()
+
+### BLOOM PEAK ----
+#Phytoplankton Bloom Peak vs Temperature (Year color gradient)
+phyto_peak_temp_plot <- bloom_peak_phytoplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(phyto_peak_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomPeakDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton Bloom Peak vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Peak Day of Year",
+       color = "Year") +
+  theme_classic()
+#Zooplankton Bloom Peak vs Temperature (Year color gradient)
+zoop_peak_temp_plot <- bloom_peak_zooplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(zoop_peak_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomPeakDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Zooplankton Bloom Peak vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Peak Day of Year",
+       color = "Year") +
+  theme_classic()
+
+### BLOOM DURATION ----
+#Phytoplankton Bloom Duration vs Temperature (Year color gradient)
+phyto_duration_temp_plot <- bloom_duration_phytoplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(phyto_duration_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomDuration,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton Bloom Duration vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Duration (days)",
+       color = "Year") +
+  theme_classic()
+#Zooplankton Bloom Duration vs Temperature (Year color gradient)
+zoop_duration_temp_plot <- bloom_duration_zooplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(zoop_duration_temp_plot,
+       aes(x = MeanTemp,
+           y = BloomDuration,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Zooplankton Bloom Duration vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom Duration (days)",
+       color = "Year") +
+  theme_classic()
+
+# Looking at potential mismatch ----
+phyto_start <- bloom_start_phytoplankton %>%
+  rename(PhytoStart = BloomStartDay)
+
+zoo_start <- bloom_start_zooplankton %>%
+  rename(ZooStart = BloomStartDay)
+
+lag_df <- phyto_start %>%
+  inner_join(zoo_start, by = "Year") %>%
+  mutate(LagDays = ZooStart - PhytoStart)
+
+ggplot(lag_df, aes(x = Year, y = LagDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Start",
+       x = "Year",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+lag_temp_df <- lag_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+
+ggplot(lag_temp_df,
+       aes(x = MeanTemp, y = LagDays, color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton–Zooplankton Bloom Lag vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Lag (days)") +
+  theme_classic()
+
+
+# Statistical Analyses -----
+
+# Statistical Tests 
+# Checking for normal distribution
+shapiro.test(bloom_start_phytoplankton$BloomStartDay)
+shapiro.test(bloom_start_zooplankton$BloomStartDay)
+
+
+# Phytoplankton vs Temperature
+phytoplankton_temp <- bloom_start_phytoplankton %>%
+  inner_join(temperature %>% mutate(Year = as.numeric(format(Date, "%Y"))), by = "Year") %>%
+  group_by(Year) %>%
+  summarise(BloomStartDay = first(BloomStartDay),
+            MeanTemp = mean(Temperature, na.rm = TRUE)) %>%
+  ungroup()
+# Linear model
+phytoplankton_temp_lm <- lm(BloomStartDay ~ MeanTemp, data = phytoplankton_temp)
+summary(phytoplankton_temp_lm)
