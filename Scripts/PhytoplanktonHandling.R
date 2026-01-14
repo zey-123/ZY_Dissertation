@@ -131,6 +131,7 @@ chl_yearly <- norm_chl %>%
 # Plot yearly averages
 ggplot(chl_yearly, aes(x = Year, y = YearlyAvgBiomass, group=1)) +
   geom_line(color = "purple") +
+  geom_smooth(method = "lm", color = "purple", se = FALSE) +
   geom_point() +
   labs(title = "Annual Mean Phytoplankton (Chl) Biomass (0–200m) at BATS",
        x = "Year",
