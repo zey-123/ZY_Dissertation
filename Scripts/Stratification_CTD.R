@@ -1,3 +1,4 @@
+# Importing and cleaning CTD data (similar to CTD_Handling script) for stratification use ----
 # Define the path to  zip file
 zip_path <- "/Users/zeynepyuksel/Downloads/Excel.zip"
 
@@ -79,12 +80,12 @@ bats_CTD <- lapply(ctd_files, read_and_extract_surface)
 # Combine into one big data frame
 bats_CTD <- bind_rows(bats_CTD)
 
-# Inspecting new dataset - bats_temp_surface and checking everything is correct ----
+# Inspecting new dataset - bats_temp_surface and checking everything is correct 
 View(bats_CTD)
 summary(bats_CTD$depth_m) # checking range
 
 
-# Calculating density from CTD data - using TEOS-10 Gibbs Seawater (GSW) package ----
+# Calculating potential density from CTD data - using TEOS-10 Gibbs Seawater (GSW) package ----
 install.packages("gsw")
 library(gsw)
 library(dplyr)
@@ -97,31 +98,29 @@ ctd <- bats_CTD %>%
     Sigma0 = gsw_sigma0(SA, CT)                                 # Sigma0= Potential density
   )
 
-
 # Inspecting stratification index per date - desnity difference between surface (10m) and deep (50m)
+# setting depth bins to capture the main density contrast that resists mixing.
 strat_index <- ctd %>%
   filter(depth_m <= 200) %>%
-  mutate(
-    depth_bin = case_when(
+  mutate(depth_bin = case_when(
       depth_m <= 15 ~ "surface",
       depth_m >= 50 & depth_m <= 200 ~ "deep",
-      TRUE ~ NA_character_
-    )
-  ) %>%
+      TRUE ~ NA_character_)) %>%
   filter(!is.na(depth_bin)) %>%
-  group_by(decimal_year, depth_bin) %>%
-  summarise(
-    mean_sigma = mean(Sigma0, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  tidyr::pivot_wider(
-    names_from = depth_bin,
-    values_from = mean_sigma
-  ) %>%
+  group_by(decimal_year, depth_bin) %>% #to look at average density within each layer as CTD casts sample many depths
+  summarise(mean_sigma = mean(Sigma0, na.rm = TRUE),
+    .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = depth_bin,values_from = mean_sigma) %>% #putting surface and deep densities side by side
   mutate(Stratification = deep - surface)
 
 
 ggplot(strat_index, aes(x = decimal_year, y = Stratification)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) +
   theme_classic()
+
+# Save stratification index for later use
+write_csv(strat_index, "Data/bats_stratification_index.csv")
+# Now this is a stratification index dataset with one value per CTD cast date
+
+
+
