@@ -53,6 +53,35 @@ ggplot(bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay)) +
 #which is why run-detection logic (and not simple mutate()) is needed.
 
 
+### Alternative Phytoplankton: Year day of maximum instantaneous growth rate within a defined period; used for indexing phytoplankton.	----
+# Function to calculate bloom start date based on maximum growth rate for phytoplankton
+calculate_bloom_start_growth_rate_phytoplankton <- function(data) {
+  data %>%
+    mutate(Year = as.numeric(format(Date, "%Y")),
+           DayOfYear = as.numeric(format(Date, "%j"))) %>%
+    group_by(Year) %>%
+    arrange(Date) %>%
+    mutate(GrowthRate = (Biomass - lag(Biomass)) / lag(Biomass)) %>%
+    filter(!is.na(GrowthRate), is.finite(GrowthRate)) %>%  # safety filter
+    slice_max(GrowthRate, n = 1, with_ties = FALSE) %>%
+    select(Year, BloomStartDay = DayOfYear) %>%
+    ungroup()
+}
+
+bloom_start_growth_rate_phytoplankton <- calculate_bloom_start_growth_rate_phytoplankton(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
+# View results
+print(bloom_start_growth_rate_phytoplankton)
+#visualize
+ggplot(bloom_start_growth_rate_phytoplankton, aes(x = Year, y = BloomStartDay)) +
+  geom_line(color = "darkgreen") +
+  geom_point() +
+  geom_smooth(method = "lm", color = "darkgreen", linetype = "dashed",se = FALSE) +
+  labs(title = "Phytoplankton Bloom Start Day (Growth Rate Method) Over Years",
+       x = "Year",
+       y = "Bloom Start Day of Year") +
+  theme_classic()
+
+
 ### Zooplankton: Year day when a lower threshold percentile (e.g. 25th percentile) of annual or seasonal cumulative biomass or abundance is reached; used for indexing zooplankton.	----
 
 calculate_bloom_start_zooplankton <- function(data, percentile = 25) { # percentile: the lower percentile threshold
@@ -401,13 +430,127 @@ ggplot(lag_temp_df,
        y = "Lag (days)") +
   theme_classic()
 
+# Phenology vs Stratification ----
+# Import stratification data
+strat_index <- read_csv("Data/bats_stratification_index.csv")
+#convert decimal year to whole
+strat_index <- strat_index %>%
+  mutate(Year = as.numeric(floor(decimal_year)))
+
+#take yearly averages for stratification
+strat_yearly <- strat_index %>%
+  group_by(Year) %>%
+  summarise(MeanStratification = mean(Stratification, na.rm = TRUE)) %>%
+  ungroup()
+# Phytoplankton Bloom Start vs Stratification
+phyto_strat_plot <- bloom_start_phytoplankton %>%
+  inner_join(strat_yearly, by = "Year")
+ggplot(phyto_strat_plot,
+       aes(x = MeanStratification,
+           y = BloomStartDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton Bloom Start vs Stratification",
+       x = "Mean Annual Stratification (kg/m³)",
+       y = "Bloom Start Day of Year",
+       color = "Year") +
+  theme_classic()
+
+# Zooplankton Bloom Start vs Stratification
+zoop_strat_plot <- bloom_start_zooplankton %>%
+  inner_join(strat_yearly, by = "Year")
+ggplot(zoop_strat_plot,
+       aes(x = MeanStratification,
+           y = BloomStartDay,
+           color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Zooplankton Bloom Start vs Stratification",
+       x = "Mean Annual Stratification (kg/m³)",
+       y = "Bloom Start Day of Year",
+       color = "Year") +
+  theme_classic()
 
 # Statistical Analyses -----
 
-# Statistical Tests 
-# Checking for normal distribution
+### Linear models for trends over years ----
+lm_phytoplankton_start <- lm(BloomStartDay  ~ Year, data=bloom_start_phytoplankton)
+lm_zooplankton_start <-lm(BloomStartDay  ~ Year, data=bloom_start_zooplankton)
+
+anova(lm_phytoplankton_start)
+anova(lm_zooplankton_start)
+
+shapiro.test(resid(lm_phytoplankton_start))
+shapiro.test(resid(lm_zooplankton_start))
+
+
+lm_phytoplankton_peak <-lm(BloomPeakDay ~ Year, data=bloom_peak_phytoplankton)
+lm_zooplankton_peak <-lm(BloomPeakDay ~ Year, data=bloom_peak_zooplankton)
+
+lm_phytoplankton_duration <-lm(BloomDuration ~ Year, data=bloom_duration_phytoplankton)
+lm_zooplankton_duration <-lm(BloomDuration ~ Year, data=bloom_duration_zooplankton)
+
+### Visualizing linear models and checking assumptions ----
+par(mfrow = c(2,2))
+plot(lm_phytoplankton_start)
+plot(lm_zooplankton_start)
+
+plot(lm_phytoplankton_peak)
+plot(lm_zooplankton_peak)
+
+plot(lm_phytoplankton_duration)
+plot(lm_zooplankton_duration)
+
+hist(bloom_start_phytoplankton$BloomStartDay,col="skyblue",breaks= 10, xlab="BloomStartDay")
+hist(bloom_start_zooplankton$BloomStartDay,col="skyblue",breaks= 10,xlab="BloomStartDay")
 shapiro.test(bloom_start_phytoplankton$BloomStartDay)
 shapiro.test(bloom_start_zooplankton$BloomStartDay)
+
+
+hist(bloom_peak_phytoplankton$BloomPeakDay,col="skyblue",breaks= 10,xlab="BloomPeakDay")
+hist(bloom_peak_zooplankton$BloomPeakDay,col="skyblue",breaks= 10,xlab="BloomPeakDay")
+shapiro.test(bloom_peak_phytoplankton$BloomPeakDay)
+shapiro.test(bloom_peak_zooplankton$BloomPeakDay)
+
+hist(bloom_duration_phytoplankton$BloomDuration,col="skyblue",breaks= 10,xlab="BloomDuration")
+hist(bloom_duration_zooplankton$BloomDuration,col="skyblue",breaks= 10,xlab="BloomDuration")
+shapiro.test(bloom_duration_phytoplankton$BloomDuration)
+shapiro.test(bloom_duration_zooplankton$BloomDuration)
+
+
+
+### Temperature Phenology Models ----
+lm(BloomStartDay ~ MeanTemp)
+lm(BloomStartDay ~ MeanTemp)
+
+lm(BloomStartDay ~ MeanTemp)
+lm(BloomStartDay ~ MeanTemp)
+
+
+
+### Checking residual autocorrelation ----
+acf(residuals(lm_phytoplankton_start)) #Blue dashed lines = 95% confidence limits, Bars outside those lines = significant autocorrelation
+  #Residuals are mostly independent, with weak, short-memory autocorrelation.
+pacf(residuals(lm_phytoplankton_start)) 
+  #There is some short-lag structure, but it is weak and not persistent.
+
+lmtest::dwtest(lm_phytoplankton_start)
+lmtest::dwtest(lm_zooplankton_start)
+lmtest::dwtest(lm_phytoplankton_peak)
+lmtest::dwtest(lm_zooplankton_peak) #problem DW<2 (positive autocorrelation)
+lmtest::dwtest(lm_phytoplankton_duration) #problem DW<2 (positive autocorrelation)
+lmtest::dwtest(lm_phytoplankton_duration) #problem DW<2 (positive autocorrelation)
+
+
+#“Autocorrelation in model residuals was assessed using autocorrelation (ACF) and partial autocorrelation (PACF) functions. 
+# Residuals from ordinary least squares models exhibited weak short-lag autocorrelation, particularly at lag 2, indicating partial violation of independence assumptions. 
+#To account for temporal dependence, all subsequent analyses were conducted using generalized least squares models with a first-order autoregressive [AR(1)] error structure.”
+
+
+
 
 
 # Phytoplankton vs Temperature
