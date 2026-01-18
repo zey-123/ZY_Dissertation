@@ -360,6 +360,22 @@ bats_temp_clean <- bats_temp_surface %>%
 #save final bats_temp_Final to github 
 write.csv(bats_temp_FINAL, "Data/bats_temp_FINAL.csv", row.names = FALSE)
 
+
+# More visualizing using long, lat info and mapping
+library(ggplot2)
+install.packages("maps")
+library(maps)
+# Get world map data
+world_map <- map_data("world")
+# Plot temperature data on world map for every year starting from 1988 to 2015 zooming into BATS region
+ggplot(bats_temp_surface, aes(longitude, latitude)) +
+  geom_point(aes(color = temperature_C)) +
+  facet_wrap(~ Year) +
+  scale_color_viridis_c() +
+  coord_fixed(xlim = c(-65, -60), ylim = c(30, 35))
+
+
+
 ####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
 #but first figuring out what the date entails 

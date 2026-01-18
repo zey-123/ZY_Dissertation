@@ -45,8 +45,6 @@ ggplot(bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay)) +
        y = "Bloom Start Day of Year") +
   theme_classic()
 
-#incorporate temperature data to visualize phenology with temperature
-
   
 #The zooplankton method works cleanly in dplyr because it is based on cumulative thresholds, 
 # while phytoplankton bloom detection requires identifying sustained consecutive periods, 
@@ -474,9 +472,55 @@ ggplot(zoop_strat_plot,
        color = "Year") +
   theme_classic()
 
+
+# Making individual datasets for zooplankton and phytoplankton, containing all info on indicies and temp. ----
+### Phytoplankton dataset - combine all indices and temperature into one dataframe (column names in order of Year, MeanTemp, BloomStartDay, BloomPeakDay, BloomDuration) ----
+
+bloom_start_phytoplankton <- bloom_start_phytoplankton %>%
+  select(Year, BloomStartDay)
+bloom_peak_phytoplankton <- bloom_peak_phytoplankton %>%
+  select(Year, BloomPeakDay)
+bloom_duration_phytoplankton <- bloom_duration_phytoplankton %>%
+  select(Year, BloomDuration)
+
+
+phytoplankton_phenology <- bats_temp_FINAL %>%
+  select(Year, MeanTemp)
+phytoplankton_phenology <- phytoplankton_phenology %>%
+  left_join(bloom_start_phytoplankton, by = "Year") %>%
+  left_join(bloom_peak_phytoplankton, by = "Year") %>%
+  left_join(bloom_duration_phytoplankton, by = "Year")
+
+#get rid of NA's and start from year 1995 for comparability with zooplankton
+phytoplankton_phenology_clean <- phytoplankton_phenology %>%
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration)
+         & Year >= 1995)
+
+
+
+### Zooplankton dataset - containing info on BloomStartDay, BloomPeakDay, BloomDuration, MeanTemp ----
+bloom_start_zooplankton <- bloom_start_zooplankton %>%
+  select(Year, BloomStartDay)
+bloom_peak_zooplankton <- bloom_peak_zooplankton %>%
+  select(Year, BloomPeakDay)
+bloom_duration_zooplankton <- bloom_duration_zooplankton %>%
+  select(Year, BloomDuration)
+
+
+zooplankton_phenology <- bats_temp_FINAL %>%
+  select(Year, MeanTemp)
+zooplankton_phenology <- zooplankton_phenology %>%
+  left_join(bloom_start_zooplankton, by = "Year") %>%
+  left_join(bloom_peak_zooplankton, by = "Year") %>%
+  left_join(bloom_duration_zooplankton, by = "Year")
+
+zooplankton_phenology_clean <- zooplankton_phenology %>%
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
+
+
 # Statistical Analyses -----
 
-### Linear models for trends over years ----
+# Linear models for Phenology Trends vs Year ----
 lm_phytoplankton_start <- lm(BloomStartDay  ~ Year, data=bloom_start_phytoplankton)
 lm_zooplankton_start <-lm(BloomStartDay  ~ Year, data=bloom_start_zooplankton)
 
@@ -521,14 +565,33 @@ shapiro.test(bloom_duration_phytoplankton$BloomDuration)
 shapiro.test(bloom_duration_zooplankton$BloomDuration)
 
 
+# Linear models for Phenology vs Temp -----
+# Phytoplankton
+lm_phyto_bloomstart_temp <- lm(BloomStartDay ~ MeanTemp, data=phytoplankton_phenology_clean)
+lm_phyto_bloompeak_temp <-lm(BloomPeakDay ~ MeanTemp, data=phytoplankton_phenology_clean)
+lm_phyto_bloomduration_temp <-lm(BloomDuration ~ MeanTemp, data=phytoplankton_phenology_clean)
 
-### Temperature Phenology Models ----
-lm(BloomStartDay ~ MeanTemp)
-lm(BloomStartDay ~ MeanTemp)
+plot(lm_phyto_bloomstart_temp)
+plot(lm_phyto_bloompeak_temp)
+plot(lm_phyto_bloomduration_temp )
 
-lm(BloomStartDay ~ MeanTemp)
-lm(BloomStartDay ~ MeanTemp)
+shapiro.test(resid(lm_phyto_bloomstart_temp))
+shapiro.test(resid(lm_phyto_bloompeak_temp))
+shapiro.test(resid(lm_phyto_bloomduration_temp ))
 
+# Zooplankton
+lm_zoop_bloomstart_temp <- lm(BloomStartDay ~ MeanTemp, data=zooplankton_phenology_clean)
+lm_zoop_bloompeak_temp <- lm(BloomPeakDay ~ MeanTemp, data=zooplankton_phenology_clean)
+lm_zoop_bloomduration_temp <- lm(BloomDuration ~ MeanTemp, data=zooplankton_phenology_clean)
+
+plot(lm_zoop_bloomstart_temp)
+plot(lm_zoop_bloompeak_temp)
+plot(lm_zoop_bloomduration_temp )
+
+
+shapiro.test(resid(lm_zoop_bloomstart_temp))
+shapiro.test(resid(lm_zoop_bloompeak_temp))
+shapiro.test(resid(lm_zoop_bloomduration_temp ))
 
 
 ### Checking residual autocorrelation ----
@@ -550,16 +613,3 @@ lmtest::dwtest(lm_phytoplankton_duration) #problem DW<2 (positive autocorrelatio
 #To account for temporal dependence, all subsequent analyses were conducted using generalized least squares models with a first-order autoregressive [AR(1)] error structure.”
 
 
-
-
-
-# Phytoplankton vs Temperature
-phytoplankton_temp <- bloom_start_phytoplankton %>%
-  inner_join(temperature %>% mutate(Year = as.numeric(format(Date, "%Y"))), by = "Year") %>%
-  group_by(Year) %>%
-  summarise(BloomStartDay = first(BloomStartDay),
-            MeanTemp = mean(Temperature, na.rm = TRUE)) %>%
-  ungroup()
-# Linear model
-phytoplankton_temp_lm <- lm(BloomStartDay ~ MeanTemp, data = phytoplankton_temp)
-summary(phytoplankton_temp_lm)
