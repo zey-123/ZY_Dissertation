@@ -375,6 +375,26 @@ ggplot(bats_temp_surface, aes(longitude, latitude)) +
   coord_fixed(xlim = c(-65, -60), ylim = c(30, 35))
 
 
+# contour plot displaying vertical temperature profiles and maybe mixed layer depth (MLD) in the BATS side for the period 1988-2016
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(akima)
+install.packages("akima")
+
+bats_temp <- bats_temp_surface %>%
+  filter(decimal_year >= 1988 & decimal_year <= 2016) %>%
+  mutate(Year = floor(decimal_year),    # Extract year
+    frac = decimal_year - Year,    # Fractional part of year
+    DayOfYear = round(frac * 365.25),    # Convert fraction of year to days (ignore leap year for simplicity)
+    Date = as.Date(DayOfYear, origin = paste0(Year, "-01-01"))    # Create a Date
+  )
+
+bats_avg <- bats_temp %>%
+  group_by(Date, depth_m) %>%
+  summarise(Temp = mean(temperature_C, na.rm = TRUE), .groups = "drop")
+
 
 ####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
