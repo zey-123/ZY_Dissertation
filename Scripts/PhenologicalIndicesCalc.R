@@ -491,6 +491,17 @@ phytoplankton_phenology <- phytoplankton_phenology %>%
   left_join(bloom_peak_phytoplankton, by = "Year") %>%
   left_join(bloom_duration_phytoplankton, by = "Year")
 
+phytoplankton_phenology <- bats_temp_FINAL %>%
+  select(Year, MeanTemp) %>%
+  left_join(bloom_start_phytoplankton, by = "Year") %>%
+  left_join(bloom_peak_phytoplankton, by = "Year") %>%
+  left_join(bloom_duration_phytoplankton, by = "Year") %>%
+  left_join(
+    strat_yearly %>% select(Year, MeanStratification),
+    by = "Year")
+colnames(phytoplankton_phenology)
+
+
 #get rid of NA's and start from year 1995 for comparability with zooplankton
 phytoplankton_phenology_clean <- phytoplankton_phenology %>%
   filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration)
@@ -508,11 +519,14 @@ bloom_duration_zooplankton <- bloom_duration_zooplankton %>%
 
 
 zooplankton_phenology <- bats_temp_FINAL %>%
-  select(Year, MeanTemp)
-zooplankton_phenology <- zooplankton_phenology %>%
+  select(Year, MeanTemp) %>%
   left_join(bloom_start_zooplankton, by = "Year") %>%
   left_join(bloom_peak_zooplankton, by = "Year") %>%
-  left_join(bloom_duration_zooplankton, by = "Year")
+  left_join(bloom_duration_zooplankton, by = "Year")%>%
+  left_join(
+    strat_yearly %>% select(Year, MeanStratification),
+    by = "Year")
+colnames(zooplankton_phenology)
 
 zooplankton_phenology_clean <- zooplankton_phenology %>%
   filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
@@ -612,4 +626,79 @@ lmtest::dwtest(lm_phytoplankton_duration) #problem DW<2 (positive autocorrelatio
 # Residuals from ordinary least squares models exhibited weak short-lag autocorrelation, particularly at lag 2, indicating partial violation of independence assumptions. 
 #To account for temporal dependence, all subsequent analyses were conducted using generalized least squares models with a first-order autoregressive [AR(1)] error structure.”
 
+# Multiple linear regression - temp and stratification vs indice
+lm_phyto_bloomstart_temp_strat <- lm(BloomStartDay ~ MeanTemp + MeanStratification, data=phytoplankton_phenology_clean)
+lm_zoop_bloomstart_temp_strat <- lm(BloomStartDay ~ MeanTemp + MeanStratification, data=zooplankton_phenology_clean)
+summary(lm_phyto_bloomstart_temp_strat)
+summary(lm_zoop_bloomstart_temp_strat)
 
+library(car)
+vif(lm_phyto_bloomstart_temp_strat)
+
+
+
+#Visualising overall trends----
+library(tidyverse)
+
+# For zooplankton
+zooplankton_long <- zooplankton_phenology_clean %>%
+  pivot_longer(
+    cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
+    names_to = "PhenologyIndex",
+    values_to = "Value"
+  ) %>%
+  mutate(Group = "Zooplankton")
+
+# For phytoplankton
+phytoplankton_long <- phytoplankton_phenology_clean %>%
+  pivot_longer(
+    cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
+    names_to = "PhenologyIndex",
+    values_to = "Value"
+  ) %>%
+  mutate(Group = "Phytoplankton")
+
+# Combine both datasets
+combined_data <- bind_rows(zooplankton_long, phytoplankton_long)
+
+# Temperature vs Indice
+ggplot(combined_data, aes(x = MeanTemp, y = Value, color = Group)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  facet_wrap(~PhenologyIndex, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Phenological Indices vs Temperature (Zooplankton & Phytoplankton)",
+    x = "Mean Temperature",
+    y = "Phenological Value"
+  ) +
+  scale_color_brewer(palette = "Set1")+
+  theme_classic()
+
+# Stratification vs Indice
+ggplot(combined_data, aes(x = MeanStratification, y = Value, color = Group)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  facet_wrap(~PhenologyIndex, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Phenological Indices vs Stratification (Zooplankton & Phytoplankton)",
+    x = "Mean Stratification",
+    y = "Phenological Value"
+  ) +
+  scale_color_brewer(palette = "Set2")+
+  theme_classic()
+
+# Year vs Indice
+ggplot(combined_data, aes(x = Year, y = Value, color = Group)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  facet_wrap(~PhenologyIndex, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Phenological Indices vs Year (Zooplankton & Phytoplankton)",
+    x = "Year",
+    y = "Phenological Value"
+  ) +
+  scale_color_brewer(palette = "Paired")+
+  theme_classic()
