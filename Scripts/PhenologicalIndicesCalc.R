@@ -1,5 +1,7 @@
 # Importing datasets & libraries ----
 library(readr)
+library(dplyr)
+library(ggplot2)
 
 norm_chl <- read_csv("Data/norm_chl.csv")
 zoop_daily <- read_csv("Data/zoop_daily.csv")
@@ -534,7 +536,7 @@ zooplankton_phenology_clean <- zooplankton_phenology %>%
 
 # Statistical Analyses -----
 
-# Linear models for Phenology Trends vs Year ----
+# Model Test: Linear models for Phenology Trends vs Year ----
 lm_phytoplankton_start <- lm(BloomStartDay  ~ Year, data=bloom_start_phytoplankton)
 lm_zooplankton_start <-lm(BloomStartDay  ~ Year, data=bloom_start_zooplankton)
 
@@ -579,36 +581,103 @@ shapiro.test(bloom_duration_phytoplankton$BloomDuration)
 shapiro.test(bloom_duration_zooplankton$BloomDuration)
 
 
-# Linear models for Phenology vs Temp -----
-# Phytoplankton
+# Model 1: Linear models for Phenology vs Temp -----
+### Phytoplankton ----
 lm_phyto_bloomstart_temp <- lm(BloomStartDay ~ MeanTemp, data=phytoplankton_phenology_clean)
 lm_phyto_bloompeak_temp <-lm(BloomPeakDay ~ MeanTemp, data=phytoplankton_phenology_clean)
 lm_phyto_bloomduration_temp <-lm(BloomDuration ~ MeanTemp, data=phytoplankton_phenology_clean)
 
+#testing assumptions 
+par(mfrow = c(2,2))
 plot(lm_phyto_bloomstart_temp)
 plot(lm_phyto_bloompeak_temp)
 plot(lm_phyto_bloomduration_temp )
 
-shapiro.test(resid(lm_phyto_bloomstart_temp))
+shapiro.test(resid(lm_phyto_bloomstart_temp)) #normality test
 shapiro.test(resid(lm_phyto_bloompeak_temp))
 shapiro.test(resid(lm_phyto_bloomduration_temp ))
 
-# Zooplankton
+hist(residuals(lm_phyto_bloompeak_temp),
+     breaks = 5,
+     main = "Residuals histogram",
+     xlab = "Residuals")
+
+
+library(lmtest) #heteroscedasticity test
+bptest(lm_phyto_bloomstart_temp)
+bptest(lm_phyto_bloompeak_temp)
+bptest(lm_phyto_bloomduration_temp )
+
+
+### Zooplankton ----
 lm_zoop_bloomstart_temp <- lm(BloomStartDay ~ MeanTemp, data=zooplankton_phenology_clean)
 lm_zoop_bloompeak_temp <- lm(BloomPeakDay ~ MeanTemp, data=zooplankton_phenology_clean)
 lm_zoop_bloomduration_temp <- lm(BloomDuration ~ MeanTemp, data=zooplankton_phenology_clean)
 
+#testing assumptions 
+par(mfrow = c(2,2))
 plot(lm_zoop_bloomstart_temp)
 plot(lm_zoop_bloompeak_temp)
 plot(lm_zoop_bloomduration_temp )
-
 
 shapiro.test(resid(lm_zoop_bloomstart_temp))
 shapiro.test(resid(lm_zoop_bloompeak_temp))
 shapiro.test(resid(lm_zoop_bloomduration_temp ))
 
+bptest(lm_zoop_bloomstart_temp)
+bptest(lm_zoop_bloompeak_temp)
+bptest(lm_zoop_bloomduration_temp)
 
-### Checking residual autocorrelation ----
+
+# Model 2: Linear models for Phenology vs Temp * Interactive Term - Year  -----
+### Phytoplankton ----
+lm_phyto_bloomstart_temp_year <- lm(BloomStartDay ~ MeanTemp * Year, data=phytoplankton_phenology_clean)
+lm_phyto_bloompeak_temp_year <-lm(BloomPeakDay ~ MeanTemp * Year, data=phytoplankton_phenology_clean)
+lm_phyto_bloomduration_temp_year <-lm(BloomDuration ~ MeanTemp * Year, data=phytoplankton_phenology_clean)
+
+#testing assumptions 
+par(mfrow = c(2,2))
+plot(lm_phyto_bloomstart_temp_year)
+plot(lm_phyto_bloompeak_temp_year)
+plot(lm_phyto_bloomduration_temp_year )
+
+shapiro.test(resid(lm_phyto_bloomstart_temp)) #normality test
+shapiro.test(resid(lm_phyto_bloompeak_temp))
+shapiro.test(resid(lm_phyto_bloomduration_temp ))
+
+library(lmtest) #heteroscedasticity test
+bptest(lm_phyto_bloomstart_temp_year)
+bptest(lm_phyto_bloompeak_temp_year)
+bptest(lm_phyto_bloomduration_temp_year )
+
+
+### Zooplankton ----
+lm_zoop_bloomstart_temp_year <- lm(BloomStartDay ~ MeanTemp*Year, data=zooplankton_phenology_clean)
+lm_zoop_bloompeak_temp_year <- lm(BloomPeakDay ~ MeanTemp*Year, data=zooplankton_phenology_clean)
+lm_zoop_bloomduration_temp_year <- lm(BloomDuration ~ MeanTemp*Year, data=zooplankton_phenology_clean)
+
+#testing assumptions
+par(mfrow = c(2,2))
+plot(lm_zoop_bloomstart_temp_year)
+plot(lm_zoop_bloompeak_temp_year)
+plot(lm_zoop_bloomduration_temp_year )
+
+shapiro.test(resid(lm_zoop_bloomstart_temp_year))
+shapiro.test(resid(lm_zoop_bloompeak_temp_year))
+shapiro.test(resid(lm_zoop_bloomduration_temp_year ))
+
+#heteroscedasticity test
+bptest(lm_zoop_bloomstart_temp_year)
+bptest(lm_zoop_bloompeak_temp_year)
+bptest(lm_zoop_bloomduration_temp_year )
+
+#AIC comparison with model 1
+AIC(lm_zoop_bloomstart_temp, lm_zoop_bloomstart_temp_year)
+AIC(lm_zoop_bloompeak_temp, lm_zoop_bloompeak_temp_year)
+AIC(lm_zoop_bloomduration_temp, lm_zoop_bloomduration_temp_year)
+
+
+#Checking residual autocorrelation ----
 acf(residuals(lm_phytoplankton_start)) #Blue dashed lines = 95% confidence limits, Bars outside those lines = significant autocorrelation
   #Residuals are mostly independent, with weak, short-memory autocorrelation.
 pacf(residuals(lm_phytoplankton_start)) 
@@ -634,6 +703,8 @@ summary(lm_zoop_bloomstart_temp_strat)
 
 library(car)
 vif(lm_phyto_bloomstart_temp_strat)
+
+
 
 
 
