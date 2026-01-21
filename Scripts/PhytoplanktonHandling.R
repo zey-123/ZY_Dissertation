@@ -17,7 +17,7 @@ View(BATS_pigments)
 ### Creating a new data set (BATS_chla) with only year, depth, turners chlorophyll a data ----
 # Remember, aim is: using Chl column, standardize depth for chlorophyll a. Need to think of a way to normalize this across the water column as different things have different ranges and need to normalize this.
 BATS_chla <- BATS_pigments %>%
-  select(yyyymmd, Depth, Chl) %>%
+  select(yyyymmd, latN, lonW,Depth, Chl) %>%
   na.omit()
 View(BATS_chla)
 
@@ -184,6 +184,30 @@ plot(lm_normchl)
 #save norm_chl to dataset folder - github ----
 write.csv(norm_chl, "Data/norm_chl.csv", row.names = FALSE)
 
+#using BATS_chla dataset to visualise phytoplankton data using long and lat info plot one for every year 
+#import ggplot and maps library
+library(ggplot2)
+library(maps)
+# Get world map data
+world_map <- map_data("world")
+
+# make sure lat and lon are numeric
+BATS_chla$latN <- as.numeric(BATS_chla$latN)
+BATS_chla$lonW <- as.numeric(BATS_chla$lonW)
+BATS_chla$Chl  <- as.numeric(BATS_chla$Chl)
+
+# Create a scatter plot of sampling locations for each year
+ggplot() +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), fill = "lightgray", color = "white") +
+  geom_point(data = BATS_chla, aes(x = lonW, y = latN, color = Chl), size = 2, alpha = 0.7) +
+  scale_color_viridis_c(option = "plasma") +
+  labs(title = "Phytoplankton Chlorophyll a Concentration at BATS",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Chl (µg/L)") +
+  theme_minimal() +
+  coord_fixed() +
+  facet_wrap(~ year(ymd(yyyymmd))) # Facet by year
 
 
 
@@ -197,7 +221,9 @@ write.csv(norm_chl, "Data/norm_chl.csv", row.names = FALSE)
 
 
 
-# ------------------------ OTHER APPROACHES -------------------------------------------
+
+
+# ------------------------ TESTING OTHER APPROACHES -------------------------------------------
 ### Step 1: Interpolation to a Standard Depth Grid (every 5 m from 0 m to 200 m.) ----
 
 # Group by unique depths and average chlorophyll values if duplicates exist
