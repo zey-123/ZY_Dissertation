@@ -629,7 +629,7 @@ bptest(lm_zoop_bloompeak_temp)
 bptest(lm_zoop_bloomduration_temp)
 
 
-# Model 2: Linear models for Phenology vs Temp * Interactive Term - Year  -----
+# Model 2: Linear models for Phenology vs Temp * Interactive Term (Year)  -----
 ### Phytoplankton ----
 lm_phyto_bloomstart_temp_year <- lm(BloomStartDay ~ MeanTemp * Year, data=phytoplankton_phenology_clean)
 lm_phyto_bloompeak_temp_year <-lm(BloomPeakDay ~ MeanTemp * Year, data=phytoplankton_phenology_clean)
@@ -675,6 +675,70 @@ bptest(lm_zoop_bloomduration_temp_year )
 AIC(lm_zoop_bloomstart_temp, lm_zoop_bloomstart_temp_year)
 AIC(lm_zoop_bloompeak_temp, lm_zoop_bloompeak_temp_year)
 AIC(lm_zoop_bloomduration_temp, lm_zoop_bloomduration_temp_year)
+
+
+
+# Model 3: Linear models for Phenology vs Temp + Main effect (Year)  -----
+### Phytoplankton ----
+lm_phyto_bloomstart_temp_MAINyear <- lm(BloomStartDay ~ MeanTemp + Year, data=phytoplankton_phenology_clean)
+lm_phyto_bloompeak_temp_MAINyear <-lm(BloomPeakDay ~ MeanTemp + Year, data=phytoplankton_phenology_clean)
+lm_phyto_bloomduration_temp_MAINyear <-lm(BloomDuration ~ MeanTemp + Year, data=phytoplankton_phenology_clean)
+
+#testing assumptions 
+par(mfrow = c(2,2))
+plot(lm_phyto_bloomstart_temp_MAINyear)
+plot(lm_phyto_bloompeak_temp_MAINyear)
+plot(lm_phyto_bloomduration_temp_MAINyear )
+
+shapiro.test(resid(lm_phyto_bloomstart_temp_MAINyear)) #normality test
+shapiro.test(resid(lm_phyto_bloompeak_temp_MAINyear))
+shapiro.test(resid(lm_phyto_bloomduration_temp_MAINyear ))
+
+library(lmtest) #heteroscedasticity test
+bptest(lm_phyto_bloomstart_temp_MAINyear)
+bptest(lm_phyto_bloompeak_temp_MAINyear)
+bptest(lm_phyto_bloomduration_temp_year )
+
+
+#AIC comparison with model 1&2 
+AIC(lm_phyto_bloomstart_temp, lm_phyto_bloomstart_temp_year,lm_phyto_bloomstart_temp_MAINyear)
+AIC(lm_phyto_bloompeak_temp, lm_phyto_bloompeak_temp_year,lm_phyto_bloompeak_temp_MAINyear)
+AIC(lm_phyto_bloomduration_temp, lm_phyto_bloomduration_temp_year,lm_phyto_bloomduration_temp_MAINyear)
+
+
+
+### Zooplankton ----
+lm_zoop_bloomstart_temp_MAINyear <- lm(BloomStartDay ~ MeanTemp+Year, data=zooplankton_phenology_clean)
+lm_zoop_bloompeak_temp_MAINyear <- lm(BloomPeakDay ~ MeanTemp+Year, data=zooplankton_phenology_clean)
+lm_zoop_bloomduration_MAINtemp_year <- lm(BloomDuration ~ MeanTemp+Year, data=zooplankton_phenology_clean)
+
+#testing assumptions
+par(mfrow = c(2,2))
+plot(lm_zoop_bloomstart_temp_MAINyear)
+plot(lm_zoop_bloompeak_temp_MAINyear)
+plot(lm_zoop_bloomduration_MAINtemp_year )
+
+shapiro.test(resid(lm_zoop_bloomstart_temp_MAINyear))
+shapiro.test(resid(lm_zoop_bloompeak_temp_MAINyear))
+shapiro.test(resid(lm_zoop_bloomduration_MAINtemp_year ))
+
+#heteroscedasticity test
+bptest(lm_zoop_bloomstart_temp_MAINyear)
+bptest(lm_zoop_bloompeak_temp_MAINyear)
+bptest(lm_zoop_bloomduration_MAINtemp_year )
+
+
+#AIC comparison with model 1&2 
+AIC(lm_zoop_bloomstart_temp, lm_zoop_bloomstart_temp_year,lm_zoop_bloomstart_temp_MAINyear)
+AIC(lm_zoop_bloompeak_temp, lm_zoop_bloompeak_temp_year,lm_zoop_bloompeak_temp_MAINyear)
+AIC(lm_zoop_bloomduration_temp, lm_zoop_bloomduration_temp_year,lm_zoop_bloomduration_MAINtemp_year)
+
+
+
+# 
+
+
+
 
 
 #Checking residual autocorrelation ----
