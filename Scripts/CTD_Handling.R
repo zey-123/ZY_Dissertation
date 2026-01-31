@@ -251,6 +251,7 @@ read_and_extract_surface <- function(file) {
   return(df_surface)
 }
 
+
 ##########Continue ----
 #** Apply the function to every CTD file
 bats_temp_surface <- lapply(ctd_files, read_and_extract_surface)
@@ -291,7 +292,7 @@ ggplot(bats_temp_yearly, aes(x = year, y = mean_temp)) +
   geom_point()+
   geom_smooth(method = "lm", se = FALSE, color = "forestgreen", linetype = "dashed") +
   labs(x = "Year", y = "Mean Temperature (°C)",
-       title = "Annual Mean Surface Temperature at BATS Over Time") +
+       title = "Annual Mean Sea Surface Temperature at BATS Over Time") +
   theme_classic()
 
 #look at the range for temperature data
@@ -363,7 +364,6 @@ write.csv(bats_temp_FINAL, "Data/bats_temp_FINAL.csv", row.names = FALSE)
 
 # More visualizing using long, lat info and mapping
 library(ggplot2)
-install.packages("maps")
 library(maps)
 # Get world map data
 world_map <- map_data("world")
@@ -373,6 +373,92 @@ ggplot(bats_temp_surface, aes(longitude, latitude)) +
   facet_wrap(~ Year) +
   scale_color_viridis_c() +
   coord_fixed(xlim = c(-65, -60), ylim = c(30, 35))
+
+#visualising spatial temperature data over the years - world map with points colored by temperature
+ggplot() +
+  geom_polygon(data = world_map,
+               aes(x = long, y = lat, group = group),
+               fill = "lightgray", color = "white") +
+  geom_point(data = bats_temp_surface,
+             aes(x = longitude, y = latitude, color = temperature_C),
+             alpha = 0.7) +
+  scale_color_viridis_c(option = "plasma") +
+  coord_fixed(xlim = c(-65, -60), ylim = c(30, 35)) +
+  labs(title = "Sea Surface Temperature at BATS (1988–2016)",
+       x = "Longitude", y = "Latitude", color = "Temp (°C)") +
+  theme_minimal()
+
+
+head(world_map)
+
+bats_temp_surface$longitude <- as.numeric(bats_temp_surface$longitude)
+bats_temp_surface$latitude <- as.numeric(bats_temp_surface$latitude)
+
+range(bats_temp_surface$longitude)
+
+ggplot(bats_temp_surface, aes(longitude, latitude)) +
+  geom_point()+
+  xlim(40, 100) +
+  ylim(30, 40)+
+  theme_classic()
+
+bats_temp_surface <- bats_temp_surface |>
+  mutate(longitude = ifelse(longitude > 180, longitude - 360, longitude))
+bats_temp_surface$longitude <- -bats_temp_surface$longitude
+
+
+library(ggplot2)
+library(maps)
+
+world_map <- map_data("world")
+
+ggplot() +
+  geom_polygon(
+    data = world_map,
+    aes(long, lat, group = group),
+    fill = "grey90",
+    color = "white",
+    linewidth = 0.2
+  ) +
+  geom_point(
+    data = bats_temp_surface,
+    aes(longitude, latitude),
+    size = 1.3,
+    alpha = 0.6
+  ) +
+  coord_fixed(
+    xlim = c(-90, -50),
+    ylim = c(20, 45))+
+  labs(
+    title = "BATS CTD Sampling Locations",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid = element_blank())
+
+# Map with points colored by temperature
+ggplot() +
+  geom_polygon(
+    data = world_map,
+    aes(long, lat, group = group),
+    fill = "grey85",
+    color = "white",
+    linewidth = 0.2) +
+  geom_point(
+    data = bats_temp_surface,
+    aes(longitude, latitude, color = temperature_C),
+    size = 1.5,
+    alpha = 0.7) +
+  scale_color_viridis_c(option = "plasma", name = "SST (°C)") +
+  coord_fixed(
+    xlim = c(-90, -50),
+    ylim = c(20, 45))+
+  labs(
+    title = "Sea Surface Temperature at BATS",
+    subtitle = "CTD surface observations (1988–2016)") +
+  theme_classic(base_size = 12)+
+  theme(panel.grid = element_blank())
 
 
 # contour plot displaying vertical temperature profiles and maybe mixed layer depth (MLD) in the BATS side for the period 1988-2016
