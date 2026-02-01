@@ -7,7 +7,51 @@ norm_chl <- read_csv("Data/norm_chl.csv")
 zoop_daily <- read_csv("Data/zoop_daily.csv")
 temperature <- read_csv("Data/BATS_temp_FINAL.csv")
 
-# Calculating Phenological Indices (Ji et al., 2010)
+
+# PLotting phyto against zoop before phenology calculations ----
+
+#### General plot over time using secondary axes 
+ggplot() +
+  geom_line(data = norm_chl, aes(x = Date, y = Chl_mean_200m_mg_m3, color = "Phytoplankton (Chlorophyll)")) +
+  geom_line(data = zoop_daily, aes(x = date, y = DryBiomass / 100, color = "Zooplankton (Dry Biomass)")) + # scaling zoop biomass for better visualization
+  scale_y_continuous(
+    name = "Phytoplankton (Chlorophyll mg/m³)",
+    sec.axis = sec_axis(~ . * 100, name = "Zooplankton (Dry Biomass µg/L)") # scaling back for secondary axis
+  ) +
+  scale_color_manual(values = c("Phytoplankton (Chlorophyll)" = "blue", "Zooplankton (Dry Biomass)" = "forestgreen")) +
+  labs(title = "Phytoplankton and Zooplankton Biomass Over Time",
+       x = "Date",
+       color = "Legend") +
+  theme_classic() +
+  theme(
+    axis.title.y.left = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "forestgreen")
+  )
+
+### PLotting phytoplankton against zooplankton with points and trend lines
+ggplot() +
+  geom_point(data = norm_chl, aes(x = Date, y = Chl_mean_200m_mg_m3, color = "Phytoplankton (Chlorophyll)"), alpha = 0.5) +
+  geom_smooth(data = norm_chl, aes(x = Date, y = Chl_mean_200m_mg_m3, color = "Phytoplankton (Chlorophyll)"), method = "lm", se = FALSE) +
+  geom_point(data = zoop_daily, aes(x = date, y = DryBiomass / 100, color = "Zooplankton (Dry Biomass)"), alpha = 0.5) + # scaling zoop biomass for better visualization
+  geom_smooth(data = zoop_daily, aes(x = date, y = DryBiomass / 100, color = "Zooplankton (Dry Biomass)"), method = "lm", se = FALSE) +
+  scale_y_continuous(
+    name = "Phytoplankton (Chlorophyll mg/m³)",
+    limits = c(0,5),
+    sec.axis = sec_axis(~ . * 100, name = "Zooplankton (Dry Biomass µg/L)") # scaling back for secondary axis
+  ) +
+  scale_color_manual(values = c("Phytoplankton (Chlorophyll)" = "blue", "Zooplankton (Dry Biomass)" = "forestgreen")) +
+  labs(title = "Phytoplankton and Zooplankton Biomass Over Time with Trend Lines",
+       x = "Date",
+       color = "Legend") +
+  theme_classic() +
+  theme(
+    axis.title.y.left = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "forestgreen")
+  )
+
+
+
+# Calculating Phenological Indices (Ji et al., 2010) ----
 
 
 # 1) Bloom start date: date when chlorophyll concentration first exceeds a threshold value (e.g., mean + 1 standard deviation of the annual cycle) and remains above it for a specified duration (e.g., 7 days).----
@@ -51,6 +95,43 @@ ggplot(bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay)) +
 #The zooplankton method works cleanly in dplyr because it is based on cumulative thresholds, 
 # while phytoplankton bloom detection requires identifying sustained consecutive periods, 
 #which is why run-detection logic (and not simple mutate()) is needed.
+
+
+# Median based threshold - year/day where Chl levels first rise a small threshold above median values (Siegel 2002) - could be an alternative method for phytoplankton bloom start detection.
+calculate_bloom_start_phyto_medianthresh <- function(data, frac = 0.1, duration = 3) { # frac: fraction above median to define threshold; duration: number of consecutive days
+  data %>%
+    mutate(Year = as.numeric(format(Date, "%Y")), 
+           DayOfYear = as.numeric(format(Date, "%j"))) %>%
+    group_by(Year) %>%
+    arrange(Date) %>%
+    mutate(
+      MedianBiomass = median(Biomass, na.rm = TRUE), #Calculate median biomass for the year
+      Threshold = MedianBiomass * (1 + frac), #Define threshold as a fraction above median
+      AboveThreshold = Biomass > Threshold, #Identify days above threshold
+      RunID = cumsum(AboveThreshold != lag(AboveThreshold, default = first(AboveThreshold))) # Create run ID for consecutive above-threshold days
+    ) %>%
+    group_by(Year, RunID) %>% #group by year and run ID
+    mutate(RunLength = n()) %>% #Calculate length of each run
+    ungroup() %>%
+    filter(AboveThreshold, RunLength >= duration) %>% #Filter for valid bloom periods
+    group_by(Year) %>% #Get first day of bloom each year
+    slice(1) %>%
+    select(Year, BloomStartDay = DayOfYear) %>%
+    ungroup()
+}
+bloom_start_phyto_medianthresh <- calculate_bloom_start_phyto_medianthresh(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
+# View results
+print(bloom_start_phyto_medianthresh)
+#visualize
+ggplot(bloom_start_phyto_medianthresh, aes(x = Year, y = BloomStartDay)) +
+  geom_line(color = "lightblue") +
+  geom_point() +
+  geom_smooth(method = "lm", color = "lightblue", linetype = "dashed",se = FALSE) +
+  labs(title = "Phytoplankton Bloom Start Day (Median Threshold Method) Over Years",
+       x = "Year",
+       y = "Bloom Start Day of Year") +
+  theme_classic()
+
 
 
 ### Alternative Phytoplankton: Year day of maximum instantaneous growth rate within a defined period; used for indexing phytoplankton.	----
