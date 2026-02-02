@@ -668,6 +668,10 @@ lm_phyto_bloomstart_temp <- lm(BloomStartDay ~ MeanTemp, data=phytoplankton_phen
 lm_phyto_bloompeak_temp <-lm(BloomPeakDay ~ MeanTemp, data=phytoplankton_phenology_clean)
 lm_phyto_bloomduration_temp <-lm(BloomDuration ~ MeanTemp, data=phytoplankton_phenology_clean)
 
+summary(lm_phyto_bloomstart_temp)
+summary(lm_phyto_bloompeak_temp)
+summary(lm_phyto_bloomduration_temp)
+
 #testing assumptions 
 par(mfrow = c(2,2))
 plot(lm_phyto_bloomstart_temp)
@@ -816,7 +820,32 @@ AIC(lm_zoop_bloomduration_temp, lm_zoop_bloomduration_temp_year,lm_zoop_bloomdur
 
 
 
-# 
+# Model 4: Linear models for Phenology vs Temp + Year + Strat  -----
+### Phytoplankton ----
+lm_phyto_bloomstart_temp_MAINyearStrat <- lm(BloomStartDay ~ MeanTemp + Year + MeanStratification, data=phytoplankton_phenology_clean)
+lm_phyto_bloompeak_temp_MAINyearStrat <-lm(BloomPeakDay ~ MeanTemp + Year + MeanStratification, data=phytoplankton_phenology_clean)
+lm_phyto_bloomduration_temp_MAINyearStrat <-lm(BloomDuration ~ MeanTemp + Year + MeanStratification, data=phytoplankton_phenology_clean)
+
+#testing assumptions 
+par(mfrow = c(2,2))
+plot(lm_phyto_bloomstart_temp_MAINyearStrat)
+plot(lm_phyto_bloompeak_temp_MAINyearStrat)
+plot(lm_phyto_bloomduration_temp_MAINyearStrat )
+
+shapiro.test(resid(lm_phyto_bloomstart_temp_MAINyearStrat)) #normality test
+shapiro.test(resid(lm_phyto_bloompeak_temp_MAINyearStrat))
+shapiro.test(resid(lm_phyto_bloomduration_temp_MAINyearStrat ))
+
+library(lmtest) #heteroscedasticity test
+bptest(lm_phyto_bloomstart_temp_MAINyearStrat)
+bptest(lm_phyto_bloompeak_temp_MAINyearStrat)
+bptest(lm_phyto_bloomduration_temp_MAINyearStrat)
+
+summary(lm_phyto_bloomstart_temp_MAINyearStrat)
+summary(lm_phyto_bloompeak_temp_MAINyearStrat)
+summary(lm_phyto_bloomduration_temp_MAINyearStrat)
+
+
 
 
 
