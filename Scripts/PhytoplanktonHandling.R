@@ -1,6 +1,7 @@
 library(readxl)
 library(dplyr)
 library(pracma)
+library(lubridate)
 
 
 BATS_pigments_1_ <- read_excel("Data/BATS_pigments (1).xlsx",na="-999")
@@ -17,7 +18,7 @@ View(BATS_pigments)
 ### Creating a new data set (BATS_chla) with only year, depth, turners chlorophyll a data ----
 # Remember, aim is: using Chl column, standardize depth for chlorophyll a. Need to think of a way to normalize this across the water column as different things have different ranges and need to normalize this.
 BATS_chla <- BATS_pigments %>%
-  select(yyyymmd, latN, lonW,Depth, Chl) %>%
+  select(yyyymmd, latN, lonW,Depth, Chl) %>% #select only relevant columns
   na.omit()
 View(BATS_chla)
 
@@ -27,11 +28,33 @@ BATS_chla$Depth <- as.numeric(BATS_chla$Depth)
 BATS_chla$Chl   <- as.numeric(BATS_chla$Chl)
 #BATS_chla$yyyymmd <- as.numeric(BATS_chla$yyyymmd)
 
-#BATS_chla$yyyymmd <- ymd(BATS_chla$yyyymmd)
+BATS_chla$yyyymmd <- ymd(BATS_chla$yyyymmd)
 
 str(BATS_chla$Chl)
 str(BATS_chla$Depth)
 
+
+#Raw chl data plot
+plot(BATS_chla$yyyymmd,BATS_chla$Chl, type="p",
+     xlab="Date", ylab="Chlorophyll a (mg/m3)",
+     main="Raw Chlorophyll a Data at BATS")
+
+#Chlorophyll a vs Depth and Time
+ggplot(BATS_chla, aes(x = yyyymmd, y = Chl)) +
+  geom_line(color = "darkblue") +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Phytoplankton Chl Over Time at BATS",
+       x = "Date",
+       y = "Chl" +
+  theme_classic())
+
+
+ggplot(BATS_chla, aes(x=yyyymmd, y=Chl))+
+  geom_line(color= "darkblue")+
+  geom_smooth(method ='lm', color = "blue")+
+  labs( x = "Date", y= "Chl")+
+  ylim (0,1) +
+  theme_classic()
 
 # Trapezoidal integration ----
 # If  Depth values don’t start at 0 or end at 200 exactly, trapezoidal integration still handles it correctly.
@@ -70,8 +93,6 @@ View(norm_chl)
 #norm_chl$Month <- format(norm_chl$yyyymmd, "%m") # Extract month as numeric
 #norm_chl$Year <- format(norm_chl$yyyymmd, "%Y") # Extract year
 
-
-library(lubridate)
 
 norm_chl$yyyymmd <- ymd(norm_chl$yyyymmd)
 
