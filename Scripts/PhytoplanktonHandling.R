@@ -2,6 +2,7 @@ library(readxl)
 library(dplyr)
 library(pracma)
 library(lubridate)
+library(ggplot2)
 
 
 BATS_pigments_1_ <- read_excel("Data/BATS_pigments (1).xlsx",na="-999")
@@ -35,26 +36,54 @@ str(BATS_chla$Depth)
 
 
 #Raw chl data plot
-plot(BATS_chla$yyyymmd,BATS_chla$Chl, type="p",
+par(mfrow=c(3,1)) # set up a 3-row plotting area
+
+plot(BATS_chla$yyyymmd,BATS_chla$Chl, type="l",
      xlab="Date", ylab="Chlorophyll a (mg/m3)",
      main="Raw Chlorophyll a Data at BATS")
 
+plot(phyto_top3$Date, phyto_top3$Chl_top3, type="l",
+     xlab="Date", ylab="Mean Chlorophyll a (mg/m³)",
+     main="Surface-weighted Chlorophyll (Top 3 Depth Bins) at BATS")
+
+plot(norm_chl$Date, norm_chl$Chl_mean_200m_mg_m3, type="l",
+     xlab="Date", ylab="Depth-normalized Chlorophyll a (mg/m3)",
+     main="Time-series of Depth-normalized Chlorophyll a (0-200 m) at BATS")
+
 #Chlorophyll a vs Depth and Time
-ggplot(BATS_chla, aes(x = yyyymmd, y = Chl)) +
-  geom_line(color = "darkblue") +
-  geom_smooth(method = "lm", color = "blue", se = FALSE) +
-  labs(title = "Phytoplankton Chl Over Time at BATS",
-       x = "Date",
-       y = "Chl" +
-  theme_classic())
-
-
 ggplot(BATS_chla, aes(x=yyyymmd, y=Chl))+
   geom_line(color= "darkblue")+
   geom_smooth(method ='lm', color = "blue")+
   labs( x = "Date", y= "Chl")+
-  ylim (0,1) +
   theme_classic()
+
+########## CHANNING ADVICE ####################################################
+# Taking mean of top three depth bins 
+phyto_top3 <- BATS_chla %>%
+  arrange(yyyymmd, Depth) %>%          # ensure shallow depths come first
+  group_by(yyyymmd) %>%
+  slice_min(order_by = Depth, n = 3) %>%# select 3 shallowest depths per date
+  summarise(Chl_top3 = mean(Chl, na.rm = TRUE)) %>% # average chlorophyll across these 3 depth bins 
+  ungroup() %>%
+  rename(Date = yyyymmd) 
+
+# outlier removal 
+Q1 <- quantile(phyto_top3$Chl_top3, 0.25, na.rm = TRUE)
+Q3 <- quantile(phyto_top3$Chl_top3, 0.75, na.rm = TRUE)
+IQR_val <- Q3 - Q1
+
+upper_bound <- Q3 + 1.5 * IQR_val
+
+phyto_top3_clean <- phyto_top3 %>%
+  filter(Chl_top3 <= upper_bound)
+
+ggplot(phyto_top3_clean, aes(x = Date, y = Chl_top3)) +
+  geom_line(color = "darkorange") +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Surface-weighted Chlorophyll (Top 3 Depth Bins)",
+    x = "Date", y = "Mean Chlorophyll a (mg/m³)") +
+  theme_classic()
+
 
 # Trapezoidal integration ----
 # If  Depth values don’t start at 0 or end at 200 exactly, trapezoidal integration still handles it correctly.
@@ -71,10 +100,8 @@ Chl_int <- trapz(BATS_filtered$Depth, BATS_filtered$Chl)
 
 norm_chl <- BATS_chla %>%
   filter(Depth >= 0, Depth <= 200) %>% # Filter depths 0–200 m
-  mutate(
-    Depth = as.numeric(Depth),
-    Chl   = as.numeric(Chl)
-  ) %>%
+  mutate(Depth = as.numeric(Depth),
+    Chl   = as.numeric(Chl)) %>%
   arrange(yyyymmd, Depth) %>%
   group_by(yyyymmd) %>%
   summarise(                      #summarise() collapses all rows for each cast into ONE row.
@@ -107,7 +134,6 @@ colnames(norm_chl)[3] <- "Chl_mean_200m_mg_m3"
 colnames(norm_chl)[4] <- "Year"
 colnames(norm_chl)[5] <- "Month"
 colnames(norm_chl)[6] <- "Day"
-
 
 
 # Visualizing time-series of depth-normalized chlorophyll ----
