@@ -879,6 +879,28 @@ library(car)
 vif(lm_phyto_bloomstart_temp_strat)
 
 
+#double axes plot with stratification and temperature against year
+ggplot() +
+  geom_point(data = bats_temp_FINAL, aes(x = Year, y = MeanTemp), color = "blue") + #add trendline 
+  geom_smooth(data = bats_temp_FINAL, aes(x = Year, y = MeanTemp), method = "lm", se = FALSE, color = "lightblue") +
+  geom_point(data = strat_yearly, aes(x = Year, y = MeanStratification), color = "red") +
+  geom_smooth(data = strat_yearly, aes(x=Year, y=MeanStratification), method = "lm", se=FALSE, color= "pink")+
+  scale_y_continuous(
+    name = "Mean Temperature (°C)",
+    sec.axis = sec_axis(~ ., name = "Mean Stratification (kg/m³)")
+  ) +
+  labs(title = "Mean Temperature and Stratification Over Years") +
+  theme_classic() +
+  theme(
+    axis.title.y.left = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "red")
+  )
+
+
+# temperature vs year and temp vs strat parfrow 
+par(mfrow = c(1,2))
+plot(bats_temp_FINAL$Year, bats_temp_FINAL$MeanTemp, main = "Temperature vs Year", xlab = "Year", ylab = "Mean Temperature (°C)", col = "blue", type ="l")
+plot(strat_yearly$Year, strat_yearly$MeanStratification, main = "Stratification vs Year", xlab = "Year", ylab = "Mean Stratification (kg/m³)", col = "red", type ="l")
 
 
 
