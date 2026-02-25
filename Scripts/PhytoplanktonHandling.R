@@ -258,6 +258,33 @@ ggplot() +
 
 
 
+# Looking at community SIZE of plankton 
+
+# approach 1: boxplot for first decade cumulative chl-a and last decade cumulative chl-a 
+cumulative_chl <- BATS_chla %>%
+  group_by(yyyymmd) %>%
+  summarise(Cumulative_Chl = sum(Chl, na.rm = TRUE)) %>% # sum all chlorophyll values for each date to get cumulative chlorophyll per date
+  ungroup() %>%
+  mutate(Decade = case_when(
+    year(yyyymmd) >= 1980 & year(yyyymmd) < 1990 ~ "First Decade (1980s)",
+    year(yyyymmd) >= 2000 & year(yyyymmd) < 2010 ~ "Last Decade (2000s)",
+  ))
+
+
+ggplot(cumulative_chl, aes(x = Decade, y = Cumulative_Chl)) +
+  geom_boxplot() +
+  labs(title = "Cumulative Chlorophyll a by Decade",
+       x = "Decade",
+       y = "Cumulative Chlorophyll a (mg/m³)") +
+  ylim(0, 3) + # Adjust y-axis limits as needed, adding a trendline
+  #geom_smooth(method = "lm", aes(group = 1), color = "red", se = FALSE) +
+  theme_classic()
+
+
+
+
+
+
 
 
 
