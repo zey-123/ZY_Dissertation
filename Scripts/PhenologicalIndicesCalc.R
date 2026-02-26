@@ -2,10 +2,11 @@
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(lubridate)
 
-norm_chl <- read_csv("Data/norm_chl.csv")
-zoop_daily <- read_csv("Data/zoop_daily.csv")
-temperature <- read_csv("Data/BATS_temp_FINAL.csv")
+norm_chl <- read_csv("Data/norm_chl.csv") #phyto
+zoop_daily <- read_csv("Data/zoop_daily.csv") #zooplankton
+temperature <- read_csv("Data/BATS_temp_FINAL.csv") #SST
 
 
 # PLotting phyto against zoop before phenology calculations ----
@@ -23,8 +24,7 @@ ggplot() +
        x = "Date",
        color = "Legend") +
   theme_classic() +
-  theme(
-    axis.title.y.left = element_text(color = "blue"),
+  theme(axis.title.y.left = element_text(color = "blue"),
     axis.title.y.right = element_text(color = "forestgreen")
   )
 
@@ -329,6 +329,207 @@ ggplot(bloom_duration_zooplankton, aes(x = Year, y = BloomDuration)) +
        x = "Year",
        y = "Bloom Duration (days)") +
   theme_classic()
+
+# 4) Bloom Magnitude: -----
+
+### Phytoplankton:  ----
+
+# calculating time-integrated biomass only during the bloom period (start–end window) (integrate chl-a concentration  between the bloom initiation and termination dates.)
+
+calculate_bloom_magnitude_trapz <- function(norm_chl,
+                                            percentile = 75,
+                                            date_col = "Date",
+                                            biomass_col = "Biomass") {
+  df <- norm_chl %>%   # Preparing a clean working table
+    mutate(Date = as.Date(.data[[date_col]]),
+      Biomass = .data[[biomass_col]],
+      Year = year(Date),
+      DayOfYear = yday(Date),
+      t = as.numeric(Date)   # numeric time in days for trapz
+    ) %>%
+    filter(!is.na(Date), !is.na(Biomass)) %>%
+    arrange(Year, Date)
+  
+  # --- Step 1: get bloom initiation/termination per year (percentile threshold)
+  bloom_periods <- df %>%
+    group_by(Year) %>%
+    mutate(Threshold = quantile(Biomass, probs = percentile/100, na.rm = TRUE),
+      Above = Biomass >= Threshold) %>%
+    filter(Above) %>%
+    summarise(BloomStartDay = min(DayOfYear),
+      BloomEndDay   = max(DayOfYear),
+      BloomStartDate = min(Date),
+      BloomEndDate   = max(Date),
+      n_above = n(),
+      .groups = "drop")
+  
+  # --- Step 2: integrate chl-a between those dates using trapezoids (trapz)
+  bloom_mag <- df %>%
+    inner_join(bloom_periods %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
+    filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
+    arrange(Year, t) %>%
+    group_by(Year) %>%
+    summarise(BloomMagnitude = ifelse(
+        n() < 2, NA_real_,  # need at least 2 points to integrate
+        sum(diff(t) * (head(Biomass, -1) + tail(Biomass, -1)) / 2, na.rm = TRUE)),
+      n_obs_in_window = n(),
+      .groups = "drop")
+
+  # Return one table with both the bloom window and magnitude
+  bloom_periods %>%
+    left_join(bloom_mag, by = "Year")}
+
+bloom_magnitude_phytoplankton <- calculate_bloom_magnitude_trapz(
+  norm_chl %>% transmute(Date = Date, Biomass = Chl_mean_200m_mg_m3),
+  percentile = 75)
+
+ggplot(bloom_magnitude_phytoplankton, aes(x = Year, y = BloomMagnitude)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", linetype = "dashed", se = FALSE) +
+  labs(title = "Phytoplankton Bloom Magnitude (Time-integrated Chl-a)",
+    x = "Year",
+    y = "Bloom integrated Chl-a (mg m^-3 · day)") +
+  theme_classic()
+
+#looking at bloom magnitude against temperature
+bloom_magnitude_temp <- bloom_magnitude_phytoplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+
+ggplot(bloom_magnitude_temp, aes(x = MeanTemp, y = BloomMagnitude, color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton Bloom Magnitude vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom integrated Chl-a (mg m^-3 · day)",
+       color = "Year") +
+  theme_classic()
+
+summary (lm(BloomMagnitude ~ MeanTemp + Year, data = bloom_magnitude_temp))
+cor(bloom_magnitude_temp$MeanTemp, bloom_magnitude_temp$Year)
+
+### Zooplankton
+bloom_duration_zooplankton <- calculate_bloom_duration_zooplankton(
+  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
+  start_percentile = 25,
+  end_percentile = 75)
+
+calculate_bloom_magnitude_zooplankton_trapz <- function(zoop_daily, bloom_windows) {
+df <- zoop_daily %>% # data has Date, Biomass
+    mutate(Date = as.Date(Date),
+      Year = year(Date),
+      DayOfYear = yday(Date),
+      t = as.numeric(Date)) %>%
+    filter(!is.na(Date), !is.na(Biomass)) %>%
+    arrange(Year, Date)
+  
+  out <- df %>%
+    inner_join(bloom_windows %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
+    filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
+    arrange(Year, t) %>%
+    group_by(Year) %>%
+    summarise(BloomMagnitude = ifelse(
+        n() < 2, NA_real_,
+        sum(diff(t) * (head(Biomass, -1) + tail(Biomass, -1)) / 2, na.rm = TRUE)),
+      n_obs_in_window = n(),
+      BloomStartDate = min(Date),
+      BloomEndDate = max(Date),
+      .groups = "drop")
+  
+  # merge back so you keep duration too
+  bloom_windows %>%
+    left_join(out, by = "Year")}
+
+bloom_magnitude_zooplankton <- calculate_bloom_magnitude_zooplankton_trapz(
+  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
+  bloom_duration_zooplankton)
+
+ggplot(bloom_magnitude_zooplankton, aes(x = Year, y = BloomMagnitude)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", linetype = "dashed", se = FALSE) +
+  labs(title = "Zooplankton Bloom Magnitude (Time-integrated Biomass)",
+    x = "Year",
+    y = "Bloom integrated biomass (units · day)") +
+  theme_classic()
+
+bloom_magnitude_temp_zoop <- bloom_magnitude_zooplankton %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+
+ggplot(bloom_magnitude_temp_zoop, aes(x = MeanTemp, y = BloomMagnitude, color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Zooplankton Bloom Magnitude vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Bloom integrated biomass (units · day)",
+       color = "Year") +
+  theme_classic()
+
+summary (lm(BloomMagnitude ~ MeanTemp + Year, data = bloom_magnitude_temp_zoop))
+
+
+
+# 5) Bloom Amplitude calculation: ----
+### Phytoplankton ----
+# calculating the maximum chl-a concentration during the bloom period (peak value) minus the baseline chl-a concentration (e.g., mean or median chl-a concentration during the non-bloom period).
+calculate_bloom_amplitude <- function(norm_chl, bloom_windows) {
+  
+  df <- norm_chl %>%
+    mutate(Date = as.Date(Date),
+      Year = lubridate::year(Date),
+      DayOfYear = lubridate::yday(Date)) %>%
+    filter(!is.na(Biomass))
+  
+  amplitude <- df %>%
+    inner_join(bloom_windows %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
+    filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
+    group_by(Year) %>%
+    summarise(BloomAmplitude = max(Biomass, na.rm = TRUE), #splitting bloom period data into years and taking max biomass  in each year (this is amplitude)
+      .groups = "drop")
+  
+  bloom_windows %>%
+    left_join(amplitude, by = "Year")}
+
+# run it
+phyto_amplitude <- calculate_bloom_amplitude(
+  norm_chl %>% transmute(Date = Date, Biomass = Chl_mean_200m_mg_m3),
+  bloom_duration_phytoplankton)
+
+# visualize
+ggplot(phyto_amplitude[-17,], aes(x = Year, y = BloomAmplitude)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", linetype = "dashed", se = FALSE) +
+  labs(title = "Phytoplankton Bloom Amplitude (Peak Chl-a)",
+       x = "Year",
+       y = "Bloom Peak Chl-a (mg m^-3)") +
+  theme_classic()
+
+
+
+### Zooplankton ----
+zoop_amplitude <- calculate_bloom_amplitude(
+  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
+  bloom_duration_zooplankton)
+
+#visualize
+ggplot(zoop_amplitude, aes(x = Year, y = BloomAmplitude)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", linetype = "dashed", se = FALSE) +
+  labs(title = "Zooplankton Bloom Amplitude (Peak Biomass)",
+       x = "Year",
+       y = "Bloom Peak Biomass (µg/L)") +
+  theme_classic()
+
+
+
+
+
+
+
 
 # More Phenological Graphs -----
 
