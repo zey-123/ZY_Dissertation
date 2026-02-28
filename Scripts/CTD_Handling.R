@@ -72,8 +72,7 @@ col_names <- c(
   "cast_ID", "decimal_year", "latitude", "longitude",
   "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m",
   "salinity_PSS78", "dissolved_oxygen_umol_per_kg",
-  "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
-)
+  "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s")
 
 
 # Diagnosing column misalignment issues ----
@@ -339,7 +338,6 @@ ggplot(bats_temp_heatmap, aes(x = year, y = mid_depth, fill = mean_temp)) +
   theme_classic()
 
 
-
 #Making a clean data set for temperature and reducing rows by aggregating  -----
 # doing this like such: Data <-aggregate(temp ( metric to summarise) , by = deciyear, (function) mean) - rounding decimal year to be full number 
 
@@ -480,6 +478,68 @@ bats_temp <- bats_temp_surface %>%
 bats_avg <- bats_temp %>%
   group_by(Date, depth_m) %>%
   summarise(Temp = mean(temperature_C, na.rm = TRUE), .groups = "drop")
+
+#SST figure (raw + deseasonalised + pre/post-2000 dashed trends)
+
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+cut_year <- 2000
+
+# 1) Build an SST time series from CTD: median temp in upper 200 m for each Date
+sst_daily <- bats_temp_surface %>%
+  mutate(Date = as.Date(Date),
+         Year = year(Date),
+         Month = month(Date)) %>%
+  filter(!is.na(Date), !is.na(temperature_C), depth_m <= 11) %>%  # "surface" definition
+  group_by(Date, Year, Month) %>%
+  summarise(SST = median(temperature_C, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Date)
+
+# 2) Deseasonalise SST by removing the mean monthly climatology
+climatology <- sst_daily %>%
+  group_by(Month) %>%
+  summarise(clim = mean(SST, na.rm = TRUE), .groups = "drop")
+
+sst_ds <- sst_daily %>%
+  left_join(climatology, by = "Month") %>%
+  mutate(SST_deseason = SST - clim)
+
+# 3) Rescale raw SST onto anomaly scale so both can be plotted + add a correct 2nd y-axis
+sf <- diff(range(sst_ds$SST_deseason, na.rm = TRUE)) / diff(range(sst_ds$SST, na.rm = TRUE))
+sst_mean <- mean(sst_ds$SST, na.rm = TRUE)
+
+# 4) Creating seperate data frames for each series to plot with different aesthetics 
+raw_df  <- sst_ds %>% mutate(Series = "Raw SST",
+                             y = (SST - sst_mean) * sf)
+ds_df   <- sst_ds %>% mutate(Series = "Deseasonalised SST",
+                             y = SST_deseason)
+pre_df  <- sst_ds %>% filter(Year < cut_year) %>% mutate(Series = "Pre-2000 trend")
+post_df <- sst_ds %>% filter(Year >= cut_year) %>% mutate(Series = "Post-2000 trend")
+
+ggplot(sst_ds, aes(x = Date)) +
+  # Raw SST (scaled onto anomaly axis so it’s visible) + plotted as a grey line
+  geom_line(data=raw_df, aes(x=Date, y=y, colour = Series),
+            linewidth = 0.7, alpha=0.7)+
+  # Deseasonalised SST anomaly (this is the main signal you trend-fit)
+  geom_line(data=ds_df, aes(x = Date, y=y, colour= Series),
+            linewidth = 1.0)+
+  # Pre-2000 linear trend (dashed red) on deseasonalised SST
+  geom_smooth(data = pre_df, aes(x = Date, y = SST_deseason, colour = Series),
+              method = "lm", se = FALSE, linetype = "dashed", linewidth = 1.0) +
+  # Post-2000 linear trend (dashed green) on deseasonalised SST
+  geom_smooth(data = post_df, aes(x = Date, y = SST_deseason, colour = Series),
+              method = "lm", se = FALSE, linetype = "dashed", linewidth = 1.0) +
+  # Left axis = deseasonalised SST; Right axis = original SST (converted back correctly)
+  scale_y_continuous(name = "Deseasonalised SST (°C)",
+    sec.axis = sec_axis(~ . / sf + sst_mean, name = "SST (°C)")) +
+  labs(title = "SST and Deseasonalised SST with Pre/Post-2000 Trends",
+    x = "Year") +
+  #Manual colors for legend
+  scale_colour_manual(name = NULL,values = c("Raw SST" = "grey70","Deseasonalised SST" = "black",
+      "Pre-2000 trend" = "red","Post-2000 trend" = "blue")) +
+  theme_classic()
 
 
 ####################### EXTRA ############################################### ----
