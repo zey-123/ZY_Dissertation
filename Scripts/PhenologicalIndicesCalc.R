@@ -43,6 +43,7 @@ ggplot() +
     axis.title.y.right = element_text(color = "forestgreen"))
 
 
+
 # Calculating Phenological Indices (Ji et al., 2010) ----
 
 
@@ -504,6 +505,8 @@ ggplot(zoop_amplitude, aes(x = Year, y = BloomAmplitude)) +
 
 
 
+
+
 # More Phenological Graphs -----
 
 # Phytoplankton Bloom Start vs Zooplankton Bloom Start
@@ -728,7 +731,6 @@ ggplot(zoop_strat_plot,
        y = "Bloom Start Day of Year",
        color = "Year") +
   theme_classic()
-
 
 # Making individual datasets for zooplankton and phytoplankton, containing all info on indicies and temp. ----
 ### Phytoplankton dataset - combine all indices and temperature into one dataframe (column names in order of Year, MeanTemp, BloomStartDay, BloomPeakDay, BloomDuration) ----
@@ -1059,16 +1061,11 @@ ggplot() +
   geom_smooth(data = bats_temp_FINAL, aes(x = Year, y = MeanTemp), method = "lm", se = FALSE, color = "lightblue") +
   geom_point(data = strat_yearly, aes(x = Year, y = MeanStratification), color = "red") +
   geom_smooth(data = strat_yearly, aes(x=Year, y=MeanStratification), method = "lm", se=FALSE, color= "pink")+
-  scale_y_continuous(
-    name = "Mean Temperature (°C)",
-    sec.axis = sec_axis(~ ., name = "Mean Stratification (kg/m³)")
-  ) +
+  scale_y_continuous( name = "Mean Temperature (°C)",
+    sec.axis = sec_axis(~ ., name = "Mean Stratification (kg/m³)")) +
   labs(title = "Mean Temperature and Stratification Over Years") +
   theme_classic() +
-  theme(
-    axis.title.y.left = element_text(color = "blue"),
-    axis.title.y.right = element_text(color = "red")
-  )
+  theme(axis.title.y.left = element_text(color = "blue"), axis.title.y.right = element_text(color = "red"))
 
 
 # temperature vs year and temp vs strat parfrow 
@@ -1077,26 +1074,21 @@ plot(bats_temp_FINAL$Year, bats_temp_FINAL$MeanTemp, main = "Temperature vs Year
 plot(strat_yearly$Year, strat_yearly$MeanStratification, main = "Stratification vs Year", xlab = "Year", ylab = "Mean Stratification (kg/m³)", col = "red", type ="l")
 
 
-
 #Visualising overall trends----
 library(tidyverse)
 
 # For zooplankton
 zooplankton_long <- zooplankton_phenology_clean %>%
-  pivot_longer(
-    cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
+  pivot_longer(cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
     names_to = "PhenologyIndex",
-    values_to = "Value"
-  ) %>%
+    values_to = "Value") %>%
   mutate(Group = "Zooplankton")
 
 # For phytoplankton
 phytoplankton_long <- phytoplankton_phenology_clean %>%
-  pivot_longer(
-    cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
+  pivot_longer(cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
     names_to = "PhenologyIndex",
-    values_to = "Value"
-  ) %>%
+    values_to = "Value") %>%
   mutate(Group = "Phytoplankton")
 
 # Combine both datasets
@@ -1108,11 +1100,9 @@ ggplot(combined_data, aes(x = MeanTemp, y = Value, color = Group)) +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   theme_minimal() +
-  labs(
-    title = "Phenological Indices vs Temperature (Zooplankton & Phytoplankton)",
+  labs(title = "Phenological Indices vs Temperature (Zooplankton & Phytoplankton)",
     x = "Mean Temperature",
-    y = "Phenological Value"
-  ) +
+    y = "Phenological Value") +
   scale_color_brewer(palette = "Set1")+
   theme_classic()
 
@@ -1122,11 +1112,9 @@ ggplot(combined_data, aes(x = MeanStratification, y = Value, color = Group)) +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   theme_minimal() +
-  labs(
-    title = "Phenological Indices vs Stratification (Zooplankton & Phytoplankton)",
+  labs(title = "Phenological Indices vs Stratification (Zooplankton & Phytoplankton)",
     x = "Mean Stratification",
-    y = "Phenological Value"
-  ) +
+    y = "Phenological Value") +
   scale_color_brewer(palette = "Set2")+
   theme_classic()
 
@@ -1136,10 +1124,7 @@ ggplot(combined_data, aes(x = Year, y = Value, color = Group)) +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   theme_minimal() +
-  labs(
-    title = "Phenological Indices vs Year (Zooplankton & Phytoplankton)",
-    x = "Year",
-    y = "Phenological Value"
-  ) +
+  labs(title = "Phenological Indices vs Year (Zooplankton & Phytoplankton)",
+    x = "Year", y = "Phenological Value") +
   scale_color_brewer(palette = "Paired")+
   theme_classic()
