@@ -541,7 +541,6 @@ ggplot(sst_ds, aes(x = Date)) +
       "Pre-2000 trend" = "red","Post-2000 trend" = "blue")) +
   theme_classic()
 
-
 ####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
 #but first figuring out what the date entails 
