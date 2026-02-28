@@ -244,32 +244,6 @@ plot(lm_normchl)
 #save norm_chl to dataset folder - github ----
 write.csv(norm_chl, "Data/norm_chl.csv", row.names = FALSE)
 
-#using BATS_chla dataset to visualise phytoplankton data using long and lat info plot one for every year 
-#import ggplot and maps library
-library(ggplot2)
-library(maps)
-# Get world map data
-world_map <- map_data("world")
-
-# make sure lat and lon are numeric
-BATS_chla$latN <- as.numeric(BATS_chla$latN)
-BATS_chla$lonW <- as.numeric(BATS_chla$lonW)
-BATS_chla$Chl  <- as.numeric(BATS_chla$Chl)
-
-# Create a scatter plot of sampling locations for each year
-ggplot() +
-  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), fill = "lightgray", color = "white") +
-  geom_point(data = BATS_chla, aes(x = lonW, y = latN, color = Chl), size = 2, alpha = 0.7) +
-  scale_color_viridis_c(option = "plasma") +
-  labs(title = "Phytoplankton Chlorophyll a Concentration at BATS",
-       x = "Longitude",
-       y = "Latitude",
-       color = "Chl (µg/L)") +
-  theme_minimal() +
-  coord_fixed() +
-  facet_wrap(~ year(ymd(yyyymmd))) # Facet by year
-
-
 
 # Visualising community SIZE of plankton ----
 
