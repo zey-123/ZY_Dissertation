@@ -124,3 +124,33 @@ write_csv(strat_index, "Data/bats_stratification_index.csv")
 
 
 
+
+# More Strat visualisations 
+
+# Seasonal Cycle 
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+strat_index2 <- strat_index %>%
+  mutate(Date = as.Date((decimal_year - 1970) * 365.25, origin = "1970-01-01"),
+         MonthDate = floor_date(Date, "month"))
+
+strat_monthly <- strat_index2 %>%
+  group_by(MonthDate) %>%
+  summarise(Strat = mean(Stratification, na.rm = TRUE), .groups="drop")
+
+ggplot(strat_monthly, aes(x = MonthDate, y = Strat)) +
+  geom_line() +
+  geom_point(size = 1) +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 10), se = FALSE) +
+  labs(title="Stratification index (monthly mean)", x="Year", y="Deep − surface density (σθ)") +
+  theme_classic()
+
+strat_season <- strat_index2 %>%
+  mutate(Month = month(Date, label = TRUE))
+
+ggplot(strat_season, aes(x = Month, y = Stratification)) +
+  geom_boxplot(outlier.alpha = 0.2, colour ="navy", fill="lightblue") +
+  labs(title="Seasonal cycle of stratification", x="Month", y="Deep − surface density (σθ)") +
+  theme_classic()
