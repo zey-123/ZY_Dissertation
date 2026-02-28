@@ -541,6 +541,33 @@ ggplot(sst_ds, aes(x = Date)) +
       "Pre-2000 trend" = "red","Post-2000 trend" = "blue")) +
   theme_classic()
 
+
+library(dplyr)
+library(lubridate)
+
+temp_200m <- bats_temp_surface %>%
+  filter(depth_m <= 200) %>%
+  group_by(cast_ID, decimal_year) %>%   # one value per cast
+  summarise(Temp_0_200 = mean(temperature_C, na.rm = TRUE),
+    .groups = "drop")
+temp_200m <- temp_200m %>%
+  mutate(Year = floor(decimal_year),
+    Day = round((decimal_year - Year) * 365.25),
+    Date = as.Date(Day, origin = paste0(Year, "-01-01")))
+temp_monthly <- temp_200m %>%
+  filter(!is.na(Date)) %>%
+  mutate(MonthDate = floor_date(Date, "month")) %>%
+  group_by(MonthDate) %>%
+  summarise(Temp = mean(Temp_0_200, na.rm = TRUE), .groups = "drop") %>%
+  mutate(Month = month(MonthDate, label = TRUE, abbr = TRUE))
+
+ggplot(temp_monthly, aes(x = Month, y = Temp)) +
+  geom_boxplot(fill = "pink", colour = "darkred", outlier.alpha = 0.2) +
+  labs(title = "Seasonal cycle of upper-ocean temperature (0–200 m)",
+       x = "Month",
+       y = "Mean temperature (°C)") +
+  theme_classic()
+
 ####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
 #but first figuring out what the date entails 
