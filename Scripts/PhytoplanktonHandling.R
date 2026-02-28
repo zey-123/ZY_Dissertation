@@ -1,3 +1,6 @@
+# Handling phytoplankton dataset obtained from BATS_pigments file on their website 
+
+# Importing required libraries 
 library(readxl)
 library(dplyr)
 library(pracma)
@@ -61,7 +64,7 @@ ggplot(BATS_chla, aes(x=yyyymmd, y=Chl))+
 # Taking mean of top three depth bins 
 phyto_top3 <- BATS_chla %>%
   arrange(yyyymmd, Depth) %>%          # ensure shallow depths come first
-  group_by(yyyymmd) %>%
+  group_by(yyyymmd) %>% 
   slice_min(order_by = Depth, n = 3) %>%# select 3 shallowest depths per date
   summarise(Chl_top3 = mean(Chl, na.rm = TRUE)) %>% # average chlorophyll across these 3 depth bins 
   ungroup() %>%
@@ -79,10 +82,21 @@ phyto_top3_clean <- phyto_top3 %>%
 
 ggplot(phyto_top3_clean, aes(x = Date, y = Chl_top3)) +
   geom_line(color = "darkorange") +
-  geom_smooth(method = "loess", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE) +
   labs(title = "Surface-weighted Chlorophyll (Top 3 Depth Bins)",
     x = "Date", y = "Mean Chlorophyll a (mg/m³)") +
   theme_classic()
+
+ggplot(norm_chl, aes(x = Date, y = Chl_mean_200m_mg_m3)) +
+  geom_line(color = "forestgreen") +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Surface-weighted Chlorophyll (Top 3 Depth Bins)",
+       x = "Date", y = "Mean Chlorophyll a (mg/m³)") +
+  theme_classic()
+
+
+#save to data folder - github ----
+write.csv(phyto_top3_clean , "Data/phyto_top3_clean.csv", row.names = FALSE)
 
 
 # Trapezoidal integration ----
@@ -214,7 +228,6 @@ norm_chl <- norm_chl %>%
   Chl_mean_200m_mg_m3 >= lower_bound)
 
 
-
 #checking for normality ----
 hist(norm_chl$Chl_mean_200m_mg_m3, breaks=50,
      main="Histogram of Depth-normalized Chlorophyll a (0-200 m) after Outlier Removal",
@@ -258,7 +271,7 @@ ggplot() +
 
 
 
-# Looking at community SIZE of plankton 
+# Visualising community SIZE of plankton ----
 
 # approach 1: boxplot for first decade cumulative chl-a and last decade cumulative chl-a 
 cumulative_chl <- BATS_chla %>%
