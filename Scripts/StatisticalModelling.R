@@ -17,9 +17,68 @@ zooplankton_phenology_clean <- read_csv("Data/zooplankton_phenology_clean.csv") 
 
 ################# ############# ############# ############# ############# ############# ############# ############
 ########################## ############# ######  Statistical Analyses -----############# #################### 
+
+# Model 1: Temporal Trends in Phenology Indices ----
 summary(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomPeakDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomDuration~Year, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~Year, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~Year, data=zooplankton_phenology_clean))
+
+# Model 2: Temporal Trends in Environmental Drivers ----
+summary(lm(MeanTemp~Year, data=zooplankton_phenology_clean))
+summary(lm(MeanStratification~Year, data=zooplankton_phenology_clean))
+summary(lm(MeanStratification~MeanTemp, data=zooplankton_phenology_clean))
+
+
+# Model 3: Bloom Characteristic and Environment - Direct Effects  ----
+
+### 3.1 - Phenology & Stratification ----
+summary(lm(BloomStartDay~MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanStratification, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanStratification, data=zooplankton_phenology_clean))
+
+### 3.2 - Phenology & Temperature ----
+summary(lm(BloomStartDay~MeanTemp, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanTemp, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp, data=zooplankton_phenology_clean))
+
+
+# Model 4: Bloom Characteristic and Environment - Combined Effects  ----
+summary(lm(BloomStartDay~MeanTemp + MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp + MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp + MeanStratification, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanTemp + MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp + MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp + MeanStratification, data=zooplankton_phenology_clean))
+
+
+# Model 5: Bloom Characteristic and Environment - Interactive Effects  ----
+summary(lm(BloomStartDay~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
+
+
+
+
+
+
+
 
 
 
