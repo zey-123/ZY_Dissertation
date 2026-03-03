@@ -361,6 +361,7 @@ ggplot(bloom_magnitude_phytoplankton %>%
        x="Year",
        y="Bloom integrated Chl-a (mg m^-3 · day)") +
   scale_x_continuous(breaks=c(1995, 2000, 2005, 2010, 2015, 2020)) +
+  scale_y_continuous(breaks=c(5,10,15)) +
   theme_classic()
 
 #looking at bloom magnitude against temperature
@@ -384,22 +385,18 @@ cor(bloom_magnitude_temp$MeanTemp, bloom_magnitude_temp$Year)
 ### Zooplankton
 bloom_windows_zoop <- bloom_duration_zooplankton  # has Year, BloomStartDay, BloomEndDay
 
-bloom_duration_zooplankton <- calculate_bloom_duration_zooplankton(
-  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
-  start_percentile = 25,
-  end_percentile = 75)
-
-calculate_bloom_magnitude_zooplankton_trapz <- function(zoop_daily, bloom_windows) {
-df <- zoop_daily %>% # data has Date, Biomass
+calculate_bloom_magnitude_zooplankton_trapz <- function(data, bloom_windows_zoop) {
+df <- data %>% # data has Date, Biomass
     mutate(Date = as.Date(Date),
       Year = year(Date),
+      Biomass = as.numeric(Biomass),
       DayOfYear = yday(Date),
       t = as.numeric(Date)) %>%
     filter(!is.na(Date), !is.na(Biomass)) %>%
     arrange(Year, Date)
   
-  out <- df %>%
-    inner_join(bloom_windows %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
+  mag_z <- df %>%
+    inner_join(bloom_windows_zoop %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
     filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
     arrange(Year, t) %>%
     group_by(Year) %>%
@@ -411,13 +408,11 @@ df <- zoop_daily %>% # data has Date, Biomass
       BloomEndDate = max(Date),
       .groups = "drop")
   
-  # merge back so you keep duration too
-  bloom_windows %>%
-    left_join(out, by = "Year")}
+  # merge back to keep duration too
+  bloom_windows_zoop %>% left_join(mag_z, by = "Year")}
 
-bloom_magnitude_zooplankton <- calculate_bloom_magnitude_zooplankton_trapz(
-  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
-  bloom_duration_zooplankton)
+zoop_data<- zoop_daily %>% transmute(Date = date, Biomass = DryBiomass)
+bloom_magnitude_zooplankton <- calculate_bloom_magnitude_zooplankton_trapz(data=zoop_data, bloom_windows= bloom_windows_zoop)
 
 ggplot(bloom_magnitude_zooplankton%>% filter(Year >= 1995, Year <= 2022),
        aes(x = Year, y = BloomMagnitude)) +
@@ -457,14 +452,14 @@ calculate_bloom_amplitude <- function(data, bloom_windows_phyto) {
       DayOfYear = lubridate::yday(Date)) %>%
     filter(!is.na(Biomass))
   
-  amplitude <- df %>%
+  amp_phyto <- df %>%
     inner_join(bloom_windows_phyto %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
     filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
     group_by(Year) %>%
     summarise(BloomAmplitude = max(Biomass, na.rm = TRUE), #splitting bloom period data into years and taking max biomass  in each year (this is amplitude)
       .groups = "drop")
   
-  bloom_windows_phyto %>%left_join(amplitude, by = "Year")}
+  bloom_windows_phyto %>%left_join(amp_phyto, by = "Year")}
 
 # run it
 phyto_amplitude <- calculate_bloom_amplitude(phyto_data,bloom_windows_phyto)
@@ -483,9 +478,23 @@ ggplot(phyto_amplitude%>% filter(Year >= 1995, Year <= 2022),
 
 
 ### Zooplankton ----
-zoop_amplitude <- calculate_bloom_amplitude(
-  zoop_daily %>% rename(Date = date, Biomass = DryBiomass),
-  bloom_duration_zooplankton)
+calculate_bloom_amplitude_zoop <- function(data, bloom_windows_zoop) {
+  df<-data%>%
+    mutate(Date=as.Date(Date),
+           Biomass=as.numeric(Biomass),
+           Year = year(Date),
+           DayOfYear = yday(Date)) %>%
+    filter(!is.na(Date), !is.na(Biomass))
+  
+amp_zoop<-df%>%
+  inner_join(bloom_windows_zoop %>% select(Year, BloomStartDay, BloomEndDay), by = "Year") %>%
+  filter(DayOfYear >= BloomStartDay, DayOfYear <= BloomEndDay) %>%
+  group_by(Year) %>%
+  summarise(BloomAmplitude = max(Biomass, na.rm = TRUE), .groups = "drop")
+
+bloom_windows_zoop %>%left_join(amp_zoop, by = "Year")}
+
+zoop_amplitude <- calculate_bloom_amplitude_zoop(zoop_data,bloom_windows_zoop)
 
 #visualize
 ggplot(zoop_amplitude%>% filter(Year >= 1995, Year <= 2022),
@@ -499,6 +508,141 @@ ggplot(zoop_amplitude%>% filter(Year >= 1995, Year <= 2022),
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
+
+# Making individual datasets for zooplankton and phytoplankton, containing all info on indicies and temp. ----
+### Phytoplankton dataset - combine all indices and temperature into one dataframe (column names in order of Year, MeanTemp, BloomStartDay, BloomPeakDay, BloomDuration) ----
+
+bloom_start_phytoplankton <- bloom_start_phytoplankton %>%
+  select(Year, BloomStartDay)%>%
+  filter(Year >= 1995, Year <= 2022)
+bloom_peak_phytoplankton <- bloom_peak_phytoplankton %>%
+  select(Year, BloomPeakDay)%>%
+  filter(Year >= 1995, Year <= 2022)
+bloom_duration_phytoplankton <- bloom_duration_phytoplankton %>%
+  select(Year, BloomDuration)%>%
+  filter(Year >= 1995, Year <= 2022)
+bloom_magnitude_phytoplankton <- bloom_magnitude_phytoplankton %>%
+  select(Year, BloomMagnitude) %>%
+  filter(Year >= 1995, Year <= 2022)
+bloom_amplitude_phytoplankton <- phyto_amplitude %>%
+  select(Year, BloomAmplitude) %>%
+  filter(Year >= 1995, Year <= 2022)
+
+phytoplankton_phenology <- bats_temp_FINAL %>%
+  select(Year, MeanTemp) %>%
+  filter(Year >= 1995, Year <= 2016) %>%
+  left_join(bloom_start_phytoplankton, by = "Year") %>%
+  left_join(bloom_peak_phytoplankton, by = "Year") %>%
+  left_join(bloom_duration_phytoplankton, by = "Year") %>%
+  left_join(bloom_magnitude_phytoplankton, by = "Year") %>%
+  left_join(bloom_amplitude_phytoplankton, by = "Year") %>%
+  left_join(strat_yearly %>% select(Year, MeanStratification),
+            by = "Year")
+colnames(phytoplankton_phenology)
+
+#get rid of NA's 
+phytoplankton_phenology_clean <- phytoplankton_phenology %>%
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
+
+write_csv(phytoplankton_phenology_clean, "Data/phytoplankton_phenology_clean.csv")
+
+### Zooplankton dataset - containing info on BloomStartDay, BloomPeakDay, BloomDuration, MeanTemp ----
+bloom_start_zooplankton <- bloom_start_zooplankton %>%
+  select(Year, BloomStartDay)
+bloom_peak_zooplankton <- bloom_peak_zooplankton %>%
+  select(Year, BloomPeakDay)
+bloom_duration_zooplankton <- bloom_duration_zooplankton %>%
+  select(Year, BloomDuration)
+bloom_magnitude_zooplankton <- bloom_magnitude_zooplankton %>%
+  select(Year, BloomMagnitude)
+bloom_amplitude_zooplankton <- zoop_amplitude %>%
+  select(Year, BloomAmplitude)
+
+
+zooplankton_phenology <- bats_temp_FINAL %>%
+  select(Year, MeanTemp) %>%
+  filter(Year >= 1995, Year <= 2016) %>%
+  left_join(bloom_start_zooplankton, by = "Year") %>%
+  left_join(bloom_peak_zooplankton, by = "Year") %>%
+  left_join(bloom_duration_zooplankton, by = "Year")%>%
+  left_join(bloom_magnitude_zooplankton, by = "Year") %>%
+  left_join(bloom_amplitude_zooplankton, by = "Year") %>%
+  left_join(strat_yearly %>% select(Year, MeanStratification),
+            by = "Year")
+colnames(zooplankton_phenology)
+
+# get rid of NA's
+zooplankton_phenology_clean <- zooplankton_phenology %>%
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
+
+write_csv(zooplankton_phenology_clean, "Data/zooplankton_phenology_clean.csv")
+
+
+# Looking at mismatch in terms of bloom start ----
+phyto_start <- bloom_start_phytoplankton %>%
+  rename(PhytoStart = BloomStartDay)
+zoo_start <- bloom_start_zooplankton %>%
+  rename(ZooStart = BloomStartDay)
+
+lag_start_df <- phyto_start %>%
+  inner_join(zoo_start, by = "Year") %>%
+  mutate(LagDays = ZooStart - PhytoStart)
+ggplot(lag_start_df, aes(x = Year, y = LagDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Start",
+       x = "Year",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+summary(lm(LagDays ~ Year, data = lag_start_df))
+
+lag_temp_df <- lag_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(lag_temp_df,
+       aes(x = MeanTemp, y = LagDays, color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton–Zooplankton Bloom Lag vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Lag (days)") +
+  theme_classic()
+
+#looking at mismatch in terms of peak day (when maximum occurs) ----
+# important: also making sure missing dates for one are excluded in the other so we are comparing the same years
+phyto_peak <- bloom_peak_phytoplankton %>%
+  rename(PhytoPeak = BloomPeakDay)
+zoo_peak <- bloom_peak_zooplankton %>%
+  rename(ZooPeak = BloomPeakDay)
+
+lag_peak_df <- phyto_peak %>%
+  inner_join(zoo_peak, by = "Year") %>% # inner join keeps only years that exist in both datasets so ONLY shared years remain
+  mutate(LagPeakDays = ZooPeak - PhytoPeak)
+ggplot(lag_peak_df, aes(x = Year, y = LagPeakDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "darkseagreen3") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Peak",
+       x = "Year",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+summary(lm(LagPeakDays ~ Year*MeanTemp, data = lag_peak_temp_df))
+
+
+lag_peak_temp_df <- lag_peak_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")
+ggplot(lag_peak_temp_df,
+       aes(x = MeanTemp, y = LagPeakDays, color = Year)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Phytoplankton–Zooplankton Bloom Peak Lag vs Temperature",
+       x = "Mean Annual Temperature (°C)",
+       y = "Lag (days)") +
+  theme_classic()
 
 
 
@@ -651,38 +795,7 @@ ggplot(zoop_duration_temp_plot,
        color = "Year") +
   theme_classic()
 
-# Looking at potential mismatch ----
-phyto_start <- bloom_start_phytoplankton %>%
-  rename(PhytoStart = BloomStartDay)
 
-zoo_start <- bloom_start_zooplankton %>%
-  rename(ZooStart = BloomStartDay)
-
-lag_df <- phyto_start %>%
-  inner_join(zoo_start, by = "Year") %>%
-  mutate(LagDays = ZooStart - PhytoStart)
-
-ggplot(lag_df, aes(x = Year, y = LagDays)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_point(size = 2, color = "darkgreen") +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Start",
-       x = "Year",
-       y = "Lag (days): Zoo − Phyto") +
-  theme_classic()
-
-lag_temp_df <- lag_df %>%
-  inner_join(bats_temp_FINAL, by = "Year")
-
-ggplot(lag_temp_df,
-       aes(x = MeanTemp, y = LagDays, color = Year)) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  scale_color_gradient(low = "blue", high = "red") +
-  labs(title = "Phytoplankton–Zooplankton Bloom Lag vs Temperature",
-       x = "Mean Annual Temperature (°C)",
-       y = "Lag (days)") +
-  theme_classic()
 
 # Phenology vs Stratification ----
 # Import stratification data
@@ -728,60 +841,6 @@ ggplot(zoop_strat_plot,
        color = "Year") +
   theme_classic()
 
-# Making individual datasets for zooplankton and phytoplankton, containing all info on indicies and temp. ----
-### Phytoplankton dataset - combine all indices and temperature into one dataframe (column names in order of Year, MeanTemp, BloomStartDay, BloomPeakDay, BloomDuration) ----
-
-bloom_start_phytoplankton <- bloom_start_phytoplankton %>%
-  select(Year, BloomStartDay)%>%
-  filter(Year >= 1995, Year <= 2022)
-bloom_peak_phytoplankton <- bloom_peak_phytoplankton %>%
-  select(Year, BloomPeakDay)%>%
-  filter(Year >= 1995, Year <= 2022)
-bloom_duration_phytoplankton <- bloom_duration_phytoplankton %>%
-  select(Year, BloomDuration)%>%
-  filter(Year >= 1995, Year <= 2022)
-
-phytoplankton_phenology <- bats_temp_FINAL %>%
-  select(Year, MeanTemp) %>%
-  filter(Year >= 1995, Year <= 2022) %>%
-  left_join(bloom_start_phytoplankton, by = "Year") %>%
-  left_join(bloom_peak_phytoplankton, by = "Year") %>%
-  left_join(bloom_duration_phytoplankton, by = "Year") %>%
-  left_join(strat_yearly %>% select(Year, MeanStratification),
-    by = "Year")
-colnames(phytoplankton_phenology)
-
-#get rid of NA's 
-phytoplankton_phenology_clean <- phytoplankton_phenology %>%
-  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
-
-write_csv(phytoplankton_phenology_clean, "Data/phytoplankton_phenology_clean.csv")
-
-### Zooplankton dataset - containing info on BloomStartDay, BloomPeakDay, BloomDuration, MeanTemp ----
-bloom_start_zooplankton <- bloom_start_zooplankton %>%
-  select(Year, BloomStartDay)
-bloom_peak_zooplankton <- bloom_peak_zooplankton %>%
-  select(Year, BloomPeakDay)
-bloom_duration_zooplankton <- bloom_duration_zooplankton %>%
-  select(Year, BloomDuration)
-
-
-zooplankton_phenology <- bats_temp_FINAL %>%
-  select(Year, MeanTemp) %>%
-  filter(Year >= 1995, Year <= 2022) %>%
-  left_join(bloom_start_zooplankton, by = "Year") %>%
-  left_join(bloom_peak_zooplankton, by = "Year") %>%
-  left_join(bloom_duration_zooplankton, by = "Year")%>%
-  left_join(strat_yearly %>% select(Year, MeanStratification),
-    by = "Year")
-colnames(zooplankton_phenology)
-
-# get rid of NA's
-zooplankton_phenology_clean <- zooplankton_phenology %>%
-  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
-
-write_csv(zooplankton_phenology_clean, "Data/zooplankton_phenology_clean.csv")
-
 
 
 ## MORE VISUALISATION ## ----
@@ -811,7 +870,7 @@ library(tidyverse)
 
 # For zooplankton: wide to long format 
 zooplankton_long <- zooplankton_phenology_clean %>%
-  pivot_longer(cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
+  pivot_longer(cols = c(BloomStartDay, BloomPeakDay, BloomDuration, BloomMagnitude, BloomAmplitude),
     names_to = "PhenologyIndex",
     values_to = "Value") %>% #
   mutate(Group = "Zooplankton")
