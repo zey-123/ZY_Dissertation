@@ -542,7 +542,7 @@ colnames(phytoplankton_phenology)
 
 #get rid of NA's 
 phytoplankton_phenology_clean <- phytoplankton_phenology %>%
-  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration) & !is.na(BloomMagnitude) & !is.na(BloomAmplitude))
 
 write_csv(phytoplankton_phenology_clean, "Data/phytoplankton_phenology_clean.csv")
 
@@ -573,7 +573,7 @@ colnames(zooplankton_phenology)
 
 # get rid of NA's
 zooplankton_phenology_clean <- zooplankton_phenology %>%
-  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration))
+  filter(!is.na(BloomStartDay) & !is.na(BloomPeakDay) & !is.na(BloomDuration) & !is.na(BloomMagnitude) & !is.na(BloomAmplitude))
 
 write_csv(zooplankton_phenology_clean, "Data/zooplankton_phenology_clean.csv")
 
