@@ -15,6 +15,7 @@ temperature <- read_csv("Data/BATS_temp_FINAL.csv") #SST
 phytoplankton_phenology_clean <- read_csv("Data/phytoplankton_phenology_clean.csv") #phytoplankton phenology indices
 zooplankton_phenology_clean <- read_csv("Data/zooplankton_phenology_clean.csv") #zooplankton phenology indices
 
+
 ################# ############# ############# ############# ############# ############# ############# ############
 ########################## ############# ######  Statistical Analyses -----############# #################### 
 
@@ -23,9 +24,21 @@ summary(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomPeakDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomDuration~Year, data=phytoplankton_phenology_clean))
 
+#shapiro for normality but n<30 
+shapiro.test(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean)$residuals)
+shapiro.test(lm(BloomPeakDay~Year, data=phytoplankton_phenology_clean)$residuals) # non normal
+shapiro.test(lm(BloomDuration~Year, data=phytoplankton_phenology_clean)$residuals)
+
+t.test(phytoplankton_phenology_clean$BloomStartDay, mu=mean(phytoplankton_phenology_clean$BloomStartDay))
+
+
 summary(lm(BloomStartDay~Year, data=zooplankton_phenology_clean))
 summary(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean))
 summary(lm(BloomDuration~Year, data=zooplankton_phenology_clean))
+
+shapiro.test(lm(BloomStartDay~Year, data=zooplankton_phenology_clean)$residuals)
+shapiro.test(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean)$residuals) # non normal
+shapiro.test(lm(BloomDuration~Year, data=zooplankton_phenology_clean)$residuals) 
 
 # Model 2: Temporal Trends in Environmental Drivers ----
 summary(lm(MeanTemp~Year, data=zooplankton_phenology_clean))
@@ -63,8 +76,19 @@ summary(lm(BloomStartDay~MeanTemp + MeanStratification, data=zooplankton_phenolo
 summary(lm(BloomPeakDay~MeanTemp + MeanStratification, data=zooplankton_phenology_clean))
 summary(lm(BloomDuration~MeanTemp + MeanStratification, data=zooplankton_phenology_clean))
 
+### 4.1 - Adding year ----
+summary(lm(BloomStartDay~MeanTemp + MeanStratification + Year, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp + MeanStratification + Year, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp + MeanStratification + Year, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanTemp + MeanStratification + Year, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp + MeanStratification + Year, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp + MeanStratification + Year, data=zooplankton_phenology_clean))
+
+
 
 # Model 5: Bloom Characteristic and Environment - Interactive Effects  ----
+### 5.1 - Testing whether the effect of temp depends on strat ----
 summary(lm(BloomStartDay~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
 summary(lm(BloomPeakDay~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
 summary(lm(BloomDuration~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
@@ -72,6 +96,19 @@ summary(lm(BloomDuration~MeanTemp*MeanStratification, data=phytoplankton_phenolo
 summary(lm(BloomStartDay~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
 summary(lm(BloomPeakDay~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
 summary(lm(BloomDuration~MeanTemp*MeanStratification, data=zooplankton_phenology_clean))
+
+
+#glm
+summary(glm(BloomStartDay~MeanTemp*MeanStratification, data=phytoplankton_phenology_clean))
+
+###5.2 - Adding year ----
+summary(lm(BloomStartDay~MeanTemp*MeanStratification + Year, data=phytoplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp*MeanStratification + Year, data=phytoplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp*MeanStratification + Year, data=phytoplankton_phenology_clean))
+
+summary(lm(BloomStartDay~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
+summary(lm(BloomPeakDay~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
+summary(lm(BloomDuration~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
 
 
 
