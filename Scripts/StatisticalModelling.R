@@ -23,6 +23,9 @@ zooplankton_phenology_clean <- read_csv("Data/zooplankton_phenology_clean.csv") 
 summary(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomPeakDay~Year, data=phytoplankton_phenology_clean))
 summary(lm(BloomDuration~Year, data=phytoplankton_phenology_clean))
+summary(lm(BloomMagnitude~Year,data=phytoplankton_phenology_clean))
+summary(lm(BloomAmplitude~Year,data=phytoplankton_phenology_clean))
+
 
 #shapiro for normality but n<30 
 shapiro.test(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean)$residuals)
@@ -35,6 +38,8 @@ t.test(phytoplankton_phenology_clean$BloomStartDay, mu=mean(phytoplankton_phenol
 summary(lm(BloomStartDay~Year, data=zooplankton_phenology_clean))
 summary(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean))
 summary(lm(BloomDuration~Year, data=zooplankton_phenology_clean))
+summary(lm(BloomMagnitude~Year,data=zooplankton_phenology_clean))
+summary(lm(BloomAmplitude~Year,data=zooplankton_phenology_clean))
 
 shapiro.test(lm(BloomStartDay~Year, data=zooplankton_phenology_clean)$residuals)
 shapiro.test(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean)$residuals) # non normal
@@ -44,6 +49,7 @@ shapiro.test(lm(BloomDuration~Year, data=zooplankton_phenology_clean)$residuals)
 summary(lm(MeanTemp~Year, data=zooplankton_phenology_clean))
 summary(lm(MeanStratification~Year, data=zooplankton_phenology_clean))
 summary(lm(MeanStratification~MeanTemp, data=zooplankton_phenology_clean))
+summary(lm(MeanTemp~Year+MeanStratification, data=zooplankton_phenology_clean)) #testing if temp changes over time and whether strat is associated with temp i.e., if MeanTemp is explained by Year and MeanStratification.
 
 
 # Model 3: Bloom Characteristic and Environment - Direct Effects  ----
@@ -109,6 +115,58 @@ summary(lm(BloomDuration~MeanTemp*MeanStratification + Year, data=phytoplankton_
 summary(lm(BloomStartDay~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
 summary(lm(BloomPeakDay~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
 summary(lm(BloomDuration~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
+
+
+
+
+
+
+
+# Trying ANOVA to look at interannual variability ----
+# Making decades the categories 
+phytoplankton_phenology_clean_ANOVA <- phytoplankton_phenology_clean %>%
+  mutate(Decade = case_when(
+    Year >= 1990 & Year < 2000 ~ "1990s",
+    Year >= 2000 & Year < 2010 ~ "2000s",
+    Year >= 2010 & Year < 2020 ~ "2010s",
+    TRUE ~ NA_character_))
+summary(aov(BloomStartDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
+summary(aov(BloomPeakDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
+summary(aov(BloomDuration ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
+
+ggplot(phytoplankton_phenology_clean_ANOVA, aes(x = Decade, y = BloomPeakDay)) +
+  geom_boxplot(fill="cornflowerblue")+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+   labs(title="Phytoplankton Bloom Peak Day by Decade", x="Decade", y="Bloom Peak Day") +
+   theme_classic()
+ggplot(phytoplankton_phenology_clean_ANOVA, aes(x = Decade, y = BloomStartDay)) +
+  geom_boxplot(fill="cornflowerblue")+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title="Phytoplankton Bloom Peak Day by Decade", x="Decade", y="Bloom Start Day") +
+  theme_classic()
+ggplot(phytoplankton_phenology_clean_ANOVA, aes(x = Decade, y = BloomDuration)) +
+  geom_boxplot(fill="cornflowerblue")+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title="Phytoplankton Bloom Peak Day by Decade", x="Decade", y="Bloom Duration") +
+  theme_classic()
+
+
+# Mann Kendall Test
+install.packages("trend")
+library(trend)
+
+mk.test(lag_peak_df$LagPeakDays)
+
+#mk test for phytoplankton bloom start day and year 
+mk.test(phytoplankton_phenology_clean$BloomStartDay)
+mk.test(phytoplankton_phenology_clean$BloomPeakDay)
+mk.test(phytoplankton_phenology_clean$BloomDuration)
+
+
+
+
+
+
 
 
 

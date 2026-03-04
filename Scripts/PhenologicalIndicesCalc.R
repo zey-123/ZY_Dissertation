@@ -577,8 +577,8 @@ zooplankton_phenology_clean <- zooplankton_phenology %>%
 
 write_csv(zooplankton_phenology_clean, "Data/zooplankton_phenology_clean.csv")
 
-
-# Looking at mismatch in terms of bloom start ----
+# MISMATCH----
+### Looking at mismatch in terms of bloom start ----
 phyto_start <- bloom_start_phytoplankton %>%
   rename(PhytoStart = BloomStartDay)
 zoo_start <- bloom_start_zooplankton %>%
@@ -586,8 +586,8 @@ zoo_start <- bloom_start_zooplankton %>%
 
 lag_start_df <- phyto_start %>%
   inner_join(zoo_start, by = "Year") %>%
-  mutate(LagDays = ZooStart - PhytoStart)
-ggplot(lag_start_df, aes(x = Year, y = LagDays)) +
+  mutate(LagStartDays = ZooStart - PhytoStart)
+ggplot(lag_start_df, aes(x = Year, y = LagStartDays)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_point(size = 2, color = "darkgreen") +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
@@ -596,12 +596,14 @@ ggplot(lag_start_df, aes(x = Year, y = LagDays)) +
        y = "Lag (days): Zoo − Phyto") +
   theme_classic()
 
-summary(lm(LagDays ~ Year, data = lag_start_df))
+summary(lm(LagStartDays ~ Year, data = lag_start_df))
+summary(lm(LagStartDays ~ Year+MeanTemp*MeanStratification, data = lag_start_df_env))
+summary(lm(LagStartDays~MeanStratification + Year, data=lag_start_df_env))
 
-lag_temp_df <- lag_df %>%
-  inner_join(bats_temp_FINAL, by = "Year")
-ggplot(lag_temp_df,
-       aes(x = MeanTemp, y = LagDays, color = Year)) +
+lag_start_df_env <- lag_start_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")%>%
+  inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
+ggplot(lag_start_df,aes(x = MeanTemp, y = LagStartDays, color = Year)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
   scale_color_gradient(low = "blue", high = "red") +
@@ -610,7 +612,7 @@ ggplot(lag_temp_df,
        y = "Lag (days)") +
   theme_classic()
 
-#looking at mismatch in terms of peak day (when maximum occurs) ----
+###looking at mismatch in terms of peak day (when maximum occurs) ----
 # important: also making sure missing dates for one are excluded in the other so we are comparing the same years
 phyto_peak <- bloom_peak_phytoplankton %>%
   rename(PhytoPeak = BloomPeakDay)
@@ -630,7 +632,9 @@ ggplot(lag_peak_df, aes(x = Year, y = LagPeakDays)) +
   theme_classic()
 
 summary(lm(LagPeakDays ~ Year*MeanTemp, data = lag_peak_temp_df))
+summary(lm(LagPeakDays ~ Year, data= lag_peak_df))
 
+AIC(lm(LagPeakDays ~ Year, data = lag_peak_temp_df))
 
 lag_peak_temp_df <- lag_peak_df %>%
   inner_join(bats_temp_FINAL, by = "Year")
@@ -645,6 +649,62 @@ ggplot(lag_peak_temp_df,
   theme_classic()
 
 
+# looking at relationship between phytoplankton and zooplankton bloom peak days (are they correlated? does one always occur after the other? etc.)
+mismatch_peak <- bloom_peak_phytoplankton %>%
+  rename(PhytoPeak = BloomPeakDay) %>%
+  inner_join(bloom_peak_zooplankton %>%
+      rename(ZooPeak = BloomPeakDay),
+    by = "Year")
+
+ggplot(mismatch_peak, aes(x = PhytoPeak, y = ZooPeak)) +
+  geom_point(size = 3, color = "darkgreen") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_smooth(method="lm", se=FALSE, color="black")+
+  labs(title = "Phytoplankton–Zooplankton Peak Timing Relationship",
+    x = "Phytoplankton Peak Day",
+    y = "Zooplankton Peak Day") +
+  theme_classic()
+
+mismatch_start <- bloom_start_phytoplankton %>%
+  rename(PhytoStart = BloomStartDay) %>%
+  inner_join(
+    bloom_start_zooplankton %>%
+      rename(ZooStart = BloomStartDay),
+    by = "Year")
+ggplot(mismatch_start, aes(x = PhytoStart, y = ZooStart)) +
+  geom_point(size = 3, color = "darkorchid") +
+  geom_smooth(method='lm',se=FALSE, color="black")+
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(title = "Phytoplankton–Zooplankton Start Timing Relationship",
+    x = "Phytoplankton Start Day",
+    y = "Zooplankton Start Day") +
+  theme_classic()
+
+summary(lm(ZooPeak ~ PhytoPeak, data = mismatch_peak))
+summary(lm(ZooStart ~ PhytoStart + Year, data = mismatch_start))
+
+#adding MeanStratification and MeanTemperature to the start mismatch dataset
+mismatch_start_env <- mismatch_start %>%
+  inner_join(bats_temp_FINAL, by = "Year") %>%
+  inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
+summary(lm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
+summary(lm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env))
+
+AIC(lm(ZooStart ~ PhytoStart, data = mismatch_start_env))
+AIC(lm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
+AIC(lm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env)) #lowest AIC, best model is the one with interaction between PhytoStart and MeanStratification
+
+
+#plot interaction between PhytoStart and MeanStratification on ZooStart
+ggplot(mismatch_start_env, aes(x = PhytoStart, y = ZooStart, color = MeanStratification)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Interaction of Phytoplankton Start and Stratification on Zooplankton Start",
+       x = "Phytoplankton Start Day",
+       y = "Zooplankton Start Day",
+       color = "Mean Stratification") +
+  theme_classic()
 
 
 # More Phenological Graphs -----
