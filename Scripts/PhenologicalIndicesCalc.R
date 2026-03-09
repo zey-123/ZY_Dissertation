@@ -195,6 +195,7 @@ ggplot(bloom_start_zooplankton %>% filter(Year >= 1995, Year <= 2022),
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
+
 #visualise bloom start for phytoplankton and zooplankton together (dual axes and trendlines for each)
 ggplot() +
   geom_line(data = bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay, color = "Phytoplankton"), size = 0.5) +
