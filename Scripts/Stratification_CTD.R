@@ -202,3 +202,8 @@ ggplot(strat_yearly %>% filter(Year>=1995), aes(x = Year, y = Stratification)) +
 
 strat_yearly %>%
   filter(Year < 1995)
+
+# Stats
+summary(glm(Stratification ~ Year, data=strat_yearly))
+plot(lm(Stratification ~ Year, data=strat_yearly))
+
