@@ -60,7 +60,6 @@ cor(zooplankton_phenology_clean$MeanTemp, zooplankton_phenology_clean$MeanStrati
 #mk.test(zooplankton_phenology_clean$MeanTemp)
 #mk.test(zooplankton_phenology_clean$MeanStratification)
 
-
 #checking plot of stratification over time
 ggplot(zooplankton_phenology_clean, aes(x=Year, y=MeanStratification)) +
   geom_point() +
@@ -84,35 +83,99 @@ summary(glm(BloomPeakDay~MeanStratification*Year, data=phytoplankton_phenology_c
 
 ##### Bloom Duration - P
 AIC(glm(BloomDuration~MeanStratification, data=phytoplankton_phenology_clean))
-AIC(glm(BloomDuration~MeanStratification+Year, data=phytoplankton_phenology_clean))
+summary(glm(BloomDuration~MeanStratification+Year, data=phytoplankton_phenology_clean)) #best AIC
 AIC(glm(BloomDuration~MeanStratification*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Magnitude - P
+summary(glm(BloomMagnitude~MeanStratification, data=phytoplankton_phenology_clean)) #best AIC
+AIC(glm(BloomMagnitude~MeanStratification+Year, data=phytoplankton_phenology_clean)) 
+AIC(glm(BloomMagnitude~MeanStratification*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Amplitude - P
+AIC(glm(BloomAmplitude~MeanStratification, data=phytoplankton_phenology_clean)) 
+AIC(glm(BloomAmplitude~MeanStratification+Year, data=phytoplankton_phenology_clean)) 
+summary(glm(BloomAmplitude~MeanStratification*Year, data=phytoplankton_phenology_clean))#best AIC
 
 
 #### Bloom Start- Z
 AIC(glm(BloomStartDay~MeanStratification, data=zooplankton_phenology_clean))
 AIC(glm(BloomStartDay~MeanStratification+Year, data=zooplankton_phenology_clean))
-AIC(glm(BloomStartDay~MeanStratification*Year, data=zooplankton_phenology_clean)) #best AIC
+summary(glm(BloomStartDay~MeanStratification*Year, data=zooplankton_phenology_clean)) #best AIC
 
 #### Bloom Peak - Z
-AIC(glm(BloomPeakDay~MeanStratification, data=zooplankton_phenology_clean))
+summary(glm(BloomPeakDay~MeanStratification, data=zooplankton_phenology_clean)) #best AIC
 AIC(glm(BloomPeakDay~MeanStratification+Year, data=zooplankton_phenology_clean))
 AIC(glm(BloomPeakDay~MeanStratification*Year, data=zooplankton_phenology_clean))
 
 #### Bloom Duration - Z
 AIC(glm(BloomDuration~MeanStratification, data=zooplankton_phenology_clean))
-AIC(glm(BloomDuration~MeanStratification+Year, data=zooplankton_phenology_clean))
+summary(glm(BloomDuration~MeanStratification+Year, data=zooplankton_phenology_clean)) #best AIC
 AIC(glm(BloomDuration~MeanStratification*Year, data=zooplankton_phenology_clean))
 
+##### Bloom Magnitude - Z
+summary(glm(BloomMagnitude~MeanStratification, data=zooplankton_phenology_clean))#best AIC
+AIC(glm(BloomMagnitude~MeanStratification+Year, data=zooplankton_phenology_clean)) 
+AIC(glm(BloomMagnitude~MeanStratification*Year, data=zooplankton_phenology_clean))
+
+##### Bloom Amplitude - Z
+summary(glm(BloomAmplitude~MeanStratification, data=zooplankton_phenology_clean)) #best AIC
+AIC(glm(BloomAmplitude~MeanStratification+Year, data=zooplankton_phenology_clean)) 
+AIC(glm(BloomAmplitude~MeanStratification*Year, data=zooplankton_phenology_clean))
 
 
 ### 3.2 - Phenology & Temperature ----
-summary(glm(BloomStartDay~MeanTemp, data=phytoplankton_phenology_clean))
-summary(glm(BloomPeakDay~MeanTemp, data=phytoplankton_phenology_clean))
-summary(glm(BloomDuration~MeanTemp, data=phytoplankton_phenology_clean))
 
-summary(lm(BloomStartDay~MeanTemp, data=zooplankton_phenology_clean))
-summary(lm(BloomPeakDay~MeanTemp, data=zooplankton_phenology_clean))
-summary(lm(BloomDuration~MeanTemp, data=zooplankton_phenology_clean))
+##### Bloom Start - P 
+summary(glm(BloomStartDay~MeanTemp, data=phytoplankton_phenology_clean))# best AIC
+AIC(glm(BloomStartDay~MeanTemp+Year, data=phytoplankton_phenology_clean)) 
+AIC(glm(BloomStartDay~MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Peak - P 
+summary(glm(BloomPeakDay~MeanTemp, data=phytoplankton_phenology_clean))# best AIC
+AIC(glm(BloomPeakDay~MeanTemp+Year, data=phytoplankton_phenology_clean))
+AIC(glm(BloomPeakDay~MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Duration - P
+summary(glm(BloomDuration~MeanTemp, data=phytoplankton_phenology_clean))#best AIC
+AIC(glm(BloomDuration~MeanTemp+Year, data=phytoplankton_phenology_clean)) 
+AIC(glm(BloomDuration~MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Magnitude - P
+AIC(glm(BloomMagnitude~MeanTemp, data=phytoplankton_phenology_clean)) 
+summary(glm(BloomMagnitude~MeanTemp+Year, data=phytoplankton_phenology_clean)) #best AIC
+AIC(glm(BloomMagnitude~MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+##### Bloom Amplitude - P
+summary(glm(BloomAmplitude~MeanTemp, data=phytoplankton_phenology_clean)) #best AIC
+AIC(glm(BloomAmplitude~MeanTemp+Year, data=phytoplankton_phenology_clean)) 
+AIC(glm(BloomAmplitude~MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+
+#### Bloom Start- Z
+summary(glm(BloomStartDay~MeanTemp, data=zooplankton_phenology_clean))#best AIC
+AIC(glm(BloomStartDay~MeanTemp+Year, data=zooplankton_phenology_clean))
+AIC(glm(BloomStartDay~MeanTemp*Year, data=zooplankton_phenology_clean)) 
+
+#### Bloom Peak - Z
+summary(glm(BloomPeakDay~MeanTemp, data=zooplankton_phenology_clean)) #best AIC
+AIC(glm(BloomPeakDay~MeanTemp+Year, data=zooplankton_phenology_clean))
+AIC(glm(BloomPeakDay~MeanTemp*Year, data=zooplankton_phenology_clean))
+
+#### Bloom Duration - Z
+summary(glm(BloomDuration~MeanTemp, data=zooplankton_phenology_clean))#best AIC
+AIC(glm(BloomDuration~MeanTemp+Year, data=zooplankton_phenology_clean)) 
+AIC(glm(BloomDuration~MeanTemp*Year, data=zooplankton_phenology_clean))
+
+##### Bloom Magnitude - Z
+summary(glm(BloomMagnitude~MeanTemp, data=zooplankton_phenology_clean))#best AIC
+AIC(glm(BloomMagnitude~MeanTemp+Year, data=zooplankton_phenology_clean)) 
+AIC(glm(BloomMagnitude~MeanTemp*Year, data=zooplankton_phenology_clean))
+
+##### Bloom Amplitude - Z
+summary(glm(BloomAmplitude~MeanTemp, data=zooplankton_phenology_clean)) #best AIC
+AIC(glm(BloomAmplitude~MeanTemp+Year, data=zooplankton_phenology_clean)) 
+AIC(glm(BloomAmplitude~MeanTemp*Year, data=zooplankton_phenology_clean))
+
 
 
 # Model 4: Bloom Characteristic and Environment - Combined Effects  ----
@@ -159,7 +222,6 @@ summary(lm(BloomPeakDay~MeanTemp*MeanStratification + Year, data=zooplankton_phe
 summary(lm(BloomDuration~MeanTemp*MeanStratification + Year, data=zooplankton_phenology_clean))
 
 
-
 ## TESTING INDIVIDUAL MODELS FOR EACH INDICIE AND COMPARING AIC TO SELECT BEST MODEL ----
 #### Bloom Start - P
 AIC(glm(BloomStartDay~MeanStratification, data=phytoplankton_phenology_clean))
@@ -173,8 +235,6 @@ AIC(glm(BloomStartDay~MeanStratification+MeanTemp*Year, data=phytoplankton_pheno
 
 # final model
 summary(glm(BloomStartDay~MeanStratification*MeanTemp*Year, data=phytoplankton_phenology_clean))
-
-
 
 #### Bloom Peak - P
 AIC(glm(BloomPeakDay~MeanStratification, data=phytoplankton_phenology_clean))
@@ -199,6 +259,8 @@ AIC(glm(BloomDuration~MeanStratification+MeanTemp + Year, data=phytoplankton_phe
 AIC(glm(BloomDuration~MeanStratification:MeanTemp, data=phytoplankton_phenology_clean))
 AIC(glm(BloomDuration~MeanStratification*MeanTemp*Year, data=phytoplankton_phenology_clean))
 AIC(glm(BloomDuration~MeanStratification+MeanTemp*Year, data=phytoplankton_phenology_clean))
+
+
 
 
 
@@ -485,6 +547,11 @@ bptest(lm_phyto_bloomduration_temp_MAINyearStrat)
 summary(lm_phyto_bloomstart_temp_MAINyearStrat)
 summary(lm_phyto_bloompeak_temp_MAINyearStrat)
 summary(lm_phyto_bloomduration_temp_MAINyearStrat)
+
+
+# Mismatch 
+summary(lm(mismatch ~ Year, data=mismatch_phenology_clean))
+
 
 
 
