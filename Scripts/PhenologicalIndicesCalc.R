@@ -673,8 +673,8 @@ ggplot(lag_start_df, aes(x = Year, y = LagStartDays)) +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
-summary(lm(LagStartDays ~ Year, data = lag_start_df))
-summary(lm(LagStartDays ~ Year+MeanTemp*MeanStratification, data = lag_start_df_env))
+summary(glm(LagStartDays ~ Year, data = lag_start_df))
+summary(glm(LagStartDays ~ Year+MeanTemp*MeanStratification, data = lag_start_df_env))
 summary(lm(LagStartDays~MeanStratification + Year, data=lag_start_df_env))
 
 lag_start_df_env <- lag_start_df %>%
