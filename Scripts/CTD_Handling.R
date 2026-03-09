@@ -487,15 +487,24 @@ library(ggplot2)
 
 cut_year <- 2000
 
+#convert decimal year to date format
+bats_temp_surface <- bats_temp_surface %>%
+  mutate(Year = floor(decimal_year), # Extract year
+         frac = decimal_year - Year, # Fractional part of year
+         Date = as.Date(DayOfYear, origin = paste0(Year, "-01-01")))
+
 # 1) Build an SST time series from CTD: median temp in upper 200 m for each Date
 sst_daily <- bats_temp_surface %>%
   mutate(Date = as.Date(Date),
          Year = year(Date),
          Month = month(Date)) %>%
-  filter(!is.na(Date), !is.na(temperature_C), depth_m <= 11) %>%  # "surface" definition
+  filter(!is.na(Date), !is.na(temperature_C), depth_m <= 200) %>%  # "surface" definition
+  filter(Year>=1995)%>%
   group_by(Date, Year, Month) %>%
   summarise(SST = median(temperature_C, na.rm = TRUE), .groups = "drop") %>%
   arrange(Date)
+head(bats_temp_surface$Date)
+names(bats_temp_surface)
 
 # 2) Deseasonalise SST by removing the mean monthly climatology
 climatology <- sst_daily %>%
@@ -567,6 +576,12 @@ ggplot(temp_monthly, aes(x = Month, y = Temp)) +
        x = "Month",
        y = "Mean temperature (°C)") +
   theme_classic()
+
+# Linear regression to test for significant trends in mean temperature over time
+summary(lm(mean_temp~decimal_year_whole, data=bats_temp_FINAL))
+plot(lm(mean_temp~decimal_year_whole, data=bats_temp_FINAL))
+
+
 
 ####################### EXTRA ############################################### ----
 #standardizing dates all into proper date objects----
