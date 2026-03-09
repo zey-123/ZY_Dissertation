@@ -154,3 +154,51 @@ ggplot(strat_season, aes(x = Month, y = Stratification)) +
   geom_boxplot(outlier.alpha = 0.2, colour ="navy", fill="lightblue") +
   labs(title="Seasonal cycle of stratification", x="Month", y="Deep − surface density (σθ)") +
   theme_classic()
+
+
+#mean stratification index (x) over time with raw grayed out in the background
+
+ggplot(strat_yearly, aes(x = decimal_year, y = YearlyStrat)) +
+  geom_line(color = "gray", alpha = 0.5) + # raw points in gray
+  geom_smooth(method = "lm", color = "blue", se = FALSE) + # GAM trend line
+  labs(title="Stratification index over time", x="Year", y="Deep − surface density (σθ)") +
+  theme_classic()
+
+strat_index <- strat_index %>%
+  mutate(Year = floor(decimal_year))
+  #filter(Year>=1995)
+strat_yearly <- strat_index %>%
+  group_by(Year) %>%
+  filter(!is.na(Stratification)) %>%
+  summarise(Stratification = mean(Stratification, na.rm = TRUE),
+            .groups = "drop")
+
+ggplot() +geom_line(data = strat_index,   # Raw CTD stratification values
+            aes(x = decimal_year, y = Stratification),
+            color = "grey70",alpha = 0.7) +
+  geom_line(data = strat_yearly,  # Yearly mean line
+            aes(x = Year, y = Stratification),color = "black",linewidth = 0.8) +
+  geom_point(data = strat_yearly, aes(x = Year, y = Stratification), color = "black", size = 1) +
+  geom_smooth(data = strat_yearly %>% filter(Year < 2000),   # Pre-2000 trend
+              aes(x = Year, y = Stratification),method = "lm",se = FALSE, linetype = "dashed",
+              color = "firebrick3") +
+  geom_smooth(data = strat_yearly %>% filter(Year >= 2000),  # Post-2000 trend
+              aes(x = Year, y = Stratification), method = "lm",se = FALSE,linetype = "dashed",
+              color = "dodgerblue3") +
+  
+  labs(title = "Stratification at BATS",x = "Year",y = "Stratification (Deep − surface density (σθ))") +
+  theme_classic()
+
+#stratification mean over yearly averages with pre- and post-2000 trends
+ggplot(strat_yearly %>% filter(Year>=1995), aes(x = Year, y = Stratification)) +
+  geom_line(color = "black", linewidth = 0.5) +
+  geom_point(color = "black", size = 1) +
+  geom_smooth(data = strat_yearly %>% filter(Year>=1995, Year < 2001),   # Pre-2000 trend
+              method = "lm",se = FALSE,linetype = "dashed",color = "firebrick3") +
+  geom_smooth(data = strat_yearly %>% filter(Year >= 2000),  # Post-2000 trend
+              method = "lm",se = FALSE,linetype = "dashed", color = "dodgerblue3") +
+  labs(title = "Stratification at BATS",x = "Year",y = "Stratification (Deep − surface density (σθ))") +
+  theme_classic()
+
+strat_yearly %>%
+  filter(Year < 1995)
