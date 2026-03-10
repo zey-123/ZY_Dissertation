@@ -261,10 +261,15 @@ AIC(glm(BloomDuration~MeanStratification*MeanTemp*Year, data=phytoplankton_pheno
 AIC(glm(BloomDuration~MeanStratification+MeanTemp*Year, data=phytoplankton_phenology_clean))
 
 
-
+#cor.test for stratification, temperature and year
+cor.test(phytoplankton_phenology_clean$MeanStratification)
+cor.test(phytoplankton_phenology_clean$MeanTemp, phytoplankton_phenology_clean$Year)
 
 
 # Trying ANOVA to look at interannual variability ----
+# looking at discrete comparisons between decades 
+
+#PHYTOPLANKTON
 # Making decades the categories 
 phytoplankton_phenology_clean_ANOVA <- phytoplankton_phenology_clean %>%
   mutate(Decade = case_when(
@@ -272,6 +277,7 @@ phytoplankton_phenology_clean_ANOVA <- phytoplankton_phenology_clean %>%
     Year >= 2000 & Year < 2010 ~ "2000s",
     Year >= 2010 & Year < 2020 ~ "2010s",
     TRUE ~ NA_character_))
+
 summary(aov(BloomStartDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
 summary(aov(BloomPeakDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
 summary(aov(BloomDuration ~ Decade, data=phytoplankton_phenology_clean_ANOVA))
@@ -291,6 +297,59 @@ ggplot(phytoplankton_phenology_clean_ANOVA, aes(x = Decade, y = BloomDuration)) 
   geom_jitter(width = 0.2, alpha = 0.5) +
   labs(title="Phytoplankton Bloom Peak Day by Decade", x="Decade", y="Bloom Duration") +
   theme_classic()
+
+# ZOOPLANKTON 
+
+zooplankton_phenology_clean_ANOVA <- zooplankton_phenology_clean %>%
+  mutate(Decade = case_when(
+    Year >= 1990 & Year < 2000 ~ "1990s",
+    Year >= 2000 & Year < 2010 ~ "2000s",
+    Year >= 2010 & Year < 2020 ~ "2010s",
+    TRUE ~ NA_character_))
+
+kruskal.test(BloomStartDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA)
+kruskal.test(BloomPeakDay ~ Decade, data=phytoplankton_phenology_clean_ANOVA)
+kruskal.test(BloomDuration ~ Decade, data=phytoplankton_phenology_clean_ANOVA)
+
+kruskal.test(BloomStartDay ~ Decade, data=zooplankton_phenology_clean_ANOVA)
+kruskal.test(BloomPeakDay ~ Decade, data=zooplankton_phenology_clean_ANOVA)
+kruskal.test(BloomDuration ~ Decade, data=zooplankton_phenology_clean_ANOVA)
+
+
+#merge zooplankton_phenology_clean_ANOVA with phytoplankton_phenology_clean_ANOVA to make a combined dataset for boxplotting
+phytoplankton_phenology_clean_ANOVA <- phytoplankton_phenology_clean_ANOVA %>%
+  mutate(Taxon = "Phytoplankton")
+zooplankton_phenology_clean_ANOVA <- zooplankton_phenology_clean_ANOVA %>%
+  mutate(Taxon = "Zooplankton")
+phenology_ANOVA_combined <- bind_rows(phytoplankton_phenology_clean_ANOVA, zooplankton_phenology_clean_ANOVA)
+
+par(mfrow=c(1,3))
+
+ggplot(phenology_ANOVA_combined, aes(x = Decade, y = BloomStartDay, fill=Taxon)) +
+  geom_boxplot()+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title="Bloom Start Day by Decade and Taxon", x="Decade", y="Bloom Start Day") +
+  scale_fill_manual(values=c("Phytoplankton"= "cornflowerblue",
+                             "Zooplankton"= "darkorchid")) +
+  theme_classic()
+
+ggplot(phenology_ANOVA_combined, aes(x = Decade, y = BloomPeakDay, fill=Taxon)) +
+  geom_boxplot()+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title="Bloom Peak Day by Decade and Taxon", x="Decade", y="Bloom Peak Day") +
+  scale_fill_manual(values=c("Phytoplankton"= "cornflowerblue",
+                             "Zooplankton"= "darkorchid")) +
+  theme_classic()
+
+ggplot(phenology_ANOVA_combined, aes(x = Decade, y = BloomDuration, fill=Taxon)) +
+  geom_boxplot()+
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title="Bloom Duration by Decade and Taxon", x="Decade", y="Bloom Duration") +
+  scale_fill_manual(values=c("Phytoplankton"= "cornflowerblue",
+                             "Zooplankton"= "darkorchid")) +
+  theme_classic()
+
+
 
 
 # Mann Kendall Test
@@ -585,6 +644,7 @@ summary(lm_zoop_bloomstart_temp_strat)
 
 library(car)
 vif(lm_phyto_bloomstart_temp_strat)
+
 
 
 
