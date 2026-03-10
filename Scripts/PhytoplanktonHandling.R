@@ -1,4 +1,5 @@
-# Handling phytoplankton dataset obtained from BATS_pigments file on their website 
+# This script is for handling the phytoplankton dataset obtained from the BATS_pigments file on their website. 
+# The goal is to clean the dataset, extract relevant columns, and perform analyses such as depth integration and normalization of chlorophyll a data to understand phytoplankton biomass over time at the BATS site.
 
 # Importing required libraries 
 library(readxl)

@@ -1,3 +1,6 @@
+# This script processes the zooplankton dataset from BATS, focusing on depth integration (0-200 m) and visualizing temporal patterns. 
+# It includes steps for data cleaning, outlier detection, and plotting seasonal and annual trends in zooplankton biomass.
+
 ## Load necessary libraries
 library(dplyr)
 library(readr)

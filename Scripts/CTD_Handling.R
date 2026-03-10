@@ -1,3 +1,7 @@
+# This script reads in CTD data from BATS casts, handles variable column numbers, extracts surface temperature data, and visualizes trends over time and depth. 
+# It also includes a diagnostic function to identify files with misaligned columns and a method to combine all CTD data into one clean dataset for analysis.
+
+
 ##### Example of reading in and handling CTD data from BATS cast 49 ----
 library(readxl)
 b50049_ctd <- read_excel("Data/CTD/b50049_ctd.xls",na="-999")

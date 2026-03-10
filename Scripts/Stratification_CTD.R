@@ -1,3 +1,6 @@
+# This script calculates a stratification index from CTD data at BATS, using the density difference between surface and deep layers. 
+# It includes data import, cleaning, potential density calculation, and visualizations of stratification trends over time and seasonally.
+
 # Importing and cleaning CTD data (similar to CTD_Handling script) for stratification use ----
 # Define the path to  zip file
 zip_path <- "/Users/zeynepyuksel/Downloads/Excel.zip"
