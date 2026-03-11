@@ -28,6 +28,14 @@ summary(glm(BloomDuration~Year, data=phytoplankton_phenology_clean))
 summary(glm(BloomMagnitude~Year,data=phytoplankton_phenology_clean))
 summary(glm(BloomAmplitude~Year,data=phytoplankton_phenology_clean))
 
+#checking autocorrelation (this is done for every model with a temporal aspect but not displayed on code as it is simply replacing the summar command to avoid lines of code)
+durbinWatsonTest(glm(BloomStartDay~Year, data=phytoplankton_phenology_clean))
+durbinWatsonTest(glm(BloomPeakDay~Year,family=Gamma, data=phytoplankton_phenology_clean))
+durbinWatsonTest(glm(BloomDuration~Year, data=phytoplankton_phenology_clean))
+durbinWatsonTest(glm(BloomMagnitude~Year,data=phytoplankton_phenology_clean))
+durbinWatsonTest(glm(BloomAmplitude~Year,data=phytoplankton_phenology_clean))
+
+
 #shapiro for normality but n<30 
 #shapiro.test(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean)$residuals)
 #shapiro.test(lm(BloomPeakDay~Year, data=phytoplankton_phenology_clean)$residuals) # non normal
