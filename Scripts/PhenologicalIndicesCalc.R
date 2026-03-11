@@ -1,15 +1,20 @@
+# This script calculates phenological indices for phytoplankton and zooplankton using the Ji et al. (2010) method,
+# which includes bloom start date, bloom peak date, bloom duration, and bloom magnitude. 
+# The script also visualizes these indices over time and explores their relationship with temperature.
+
 # Importing datasets & libraries ----
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
+library(tidyverse)
 
 norm_chl <- read_csv("Data/norm_chl.csv") #phyto
 zoop_daily <- read_csv("Data/zoop_daily.csv") #zooplankton
 temperature <- read_csv("Data/BATS_temp_FINAL.csv") #SST
 
 
-# PLotting phyto against zoop before phenology calculations ----
+# Plotting phyto against zoop before phenology calculations ----
 
 #### General plot over time using secondary axes 
 ggplot() +
@@ -663,6 +668,11 @@ zoo_start <- bloom_start_zooplankton %>%
 lag_start_df <- phyto_start %>%
   inner_join(zoo_start, by = "Year") %>%
   mutate(LagStartDays = ZooStart - PhytoStart)
+
+lag_start_df_env <- lag_start_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")%>%
+  inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
+
 ggplot(lag_start_df, aes(x = Year, y = LagStartDays)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_point(size = 2, color = "darkgreen") +
@@ -673,14 +683,49 @@ ggplot(lag_start_df, aes(x = Year, y = LagStartDays)) +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
-summary(glm(LagStartDays ~ Year, data = lag_start_df))
-summary(glm(LagStartDays ~ Year+MeanTemp*MeanStratification, data = lag_start_df_env))
-summary(lm(LagStartDays~MeanStratification + Year, data=lag_start_df_env))
 
-lag_start_df_env <- lag_start_df %>%
-  inner_join(bats_temp_FINAL, by = "Year")%>%
-  inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
-ggplot(lag_start_df,aes(x = MeanTemp, y = LagStartDays, color = Year)) +
+ggplot(lag_start_df_env, aes(x = MeanTemp, y = LagStartDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Peak",
+       x = "Mean Temperature",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+summary(glm(LagStartDays~MeanTemp, data=lag_start_df_env))
+
+ggplot(lag_start_df_env, aes(x = MeanStratification, y = LagStartDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Start",
+       x = "MeanStrat",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+
+summary(glm(LagStartDays ~ Year,data = lag_start_df))
+AIC(glm(LagStartDays ~ MeanTemp,data = lag_start_df_env))
+AIC(glm(LagStartDays ~ MeanStratification,data = lag_start_df_env))
+
+
+AIC(glm(LagStartDays ~ Year + MeanTemp, data = lag_start_df_env))
+AIC(glm(LagStartDays ~ Year + MeanStratification, data = lag_start_df_env))
+
+AIC(glm(LagStartDays ~ Year + MeanTemp + MeanStratification, data = lag_start_df_env))
+AIC(glm(LagStartDays ~ Year + MeanTemp*MeanStratification, data = lag_start_df_env))
+AIC(glm(LagStartDays ~ Year*MeanTemp*MeanStratification, data = lag_start_df_env))
+
+
+AIC(glm(LagStartDays~MeanTemp, data=lag_start_df_env)) # Best AIC
+AIC(glm(LagStartDays~MeanStratification, data=lag_start_df_env))
+AIC(glm(LagStartDays~MeanStratification + MeanTemp, data=lag_start_df_env))
+summary(glm(LagStartDays~MeanStratification*MeanTemp, data=lag_start_df_env)) #Second best AIC
+
+
+
+ggplot(lag_start_df_env,aes(x = MeanTemp, y = LagStartDays, color = Year)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
   scale_color_gradient(low = "blue", high = "red") +
@@ -699,9 +744,14 @@ zoo_peak <- bloom_peak_zooplankton %>%
 lag_peak_df <- phyto_peak %>%
   inner_join(zoo_peak, by = "Year") %>% # inner join keeps only years that exist in both datasets so ONLY shared years remain
   mutate(LagPeakDays = ZooPeak - PhytoPeak)
+lag_peak_temp_df <- lag_peak_df %>%
+  inner_join(bats_temp_FINAL, by = "Year")%>%
+  inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
+
+#lag peak x year
 ggplot(lag_peak_df, aes(x = Year, y = LagPeakDays)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_point(size = 2, color = "darkseagreen3") +
+  geom_point(size = 2, color = "blue") +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
   labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Peak",
        x = "Year",
@@ -709,13 +759,50 @@ ggplot(lag_peak_df, aes(x = Year, y = LagPeakDays)) +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
-summary(lm(LagPeakDays ~ Year*MeanTemp, data = lag_peak_temp_df))
+#lag peak x temp 
+ggplot(lag_peak_temp_df, aes(x = MeanTemp, y = LagPeakDays)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2, color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Lag Between Phytoplankton and Zooplankton Bloom Peak",
+       x = "Mean Temperature",
+       y = "Lag (days): Zoo − Phyto") +
+  theme_classic()
+
+summary(glm(LagPeakDays~MeanTemp, data=lag_peak_temp_df))
+
+
+
+plot(lm(LagPeakDays ~ Year*MeanTemp, data = lag_peak_temp_df))
 summary(lm(LagPeakDays ~ Year, data= lag_peak_df))
 
-AIC(lm(LagPeakDays ~ Year, data = lag_peak_temp_df))
 
-lag_peak_temp_df <- lag_peak_df %>%
-  inner_join(bats_temp_FINAL, by = "Year")
+
+
+summary(glm(LagPeakDays ~ MeanTemp, data = lag_peak_temp_df))
+AIC(glm(LagPeakDays ~ Year + MeanTemp, data = lag_peak_temp_df))
+AIC(glm(LagPeakDays ~ Year + MeanStratification, data = lag_peak_temp_df))
+
+AIC(glm(LagPeakDays ~ Year + MeanTemp + MeanStratification, data = lag_peak_temp_df))
+AIC(glm(LagPeakDays ~ Year + MeanTemp*MeanStratification, data = lag_peak_temp_df))
+AIC(glm(LagPeakDays ~ Year*MeanTemp*MeanStratification, data = lag_peak_temp_df))
+
+
+AIC(glm(LagPeakDays~MeanTemp, data=lag_peak_temp_df)) 
+AIC(glm(LagPeakDays~MeanStratification, data=lag_peak_temp_df))
+AIC(glm(LagPeakDays~MeanStratification + MeanTemp, data=lag_peak_temp_df))
+summary(glm(LagPeakDays~MeanStratification*MeanTemp, data=lag_peak_temp_df)) # Best AIC
+
+# Check the residuals of your best model
+best_model <- lm(LagStartDays ~ MeanTemp, data = lag_start_df_env)
+
+# checking autocorrelation 
+acf(residuals(best_model), main="ACF of Model Residuals")
+pacf(residuals(best_model), main="PACF of Model Residuals")
+durbinWatsonTest(best_model)
+
+
+
 ggplot(lag_peak_temp_df,
        aes(x = MeanTemp, y = LagPeakDays, color = Year)) +
   geom_point(size = 3) +
@@ -735,13 +822,14 @@ mismatch_peak <- bloom_peak_phytoplankton %>%
     by = "Year")
 
 ggplot(mismatch_peak, aes(x = PhytoPeak, y = ZooPeak)) +
-  geom_point(size = 3, color = "darkseagreen3") +
+  geom_point(size = 3, color = "blue") +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   geom_smooth(method="lm", se=FALSE, color="black")+
   labs(title = "Phytoplankton–Zooplankton Peak Timing Relationship",
     x = "Phytoplankton Peak Day",
     y = "Zooplankton Peak Day") +
   theme_classic()
+
 
 mismatch_start <- bloom_start_phytoplankton %>%
   rename(PhytoStart = BloomStartDay) %>%
@@ -758,19 +846,23 @@ ggplot(mismatch_start, aes(x = PhytoStart, y = ZooStart)) +
     y = "Zooplankton Start Day") +
   theme_classic()
 
+
+summary(lm(ZooStart ~ PhytoStart , data = mismatch_start))
 summary(lm(ZooPeak ~ PhytoPeak, data = mismatch_peak))
-summary(lm(ZooStart ~ PhytoStart + Year, data = mismatch_start))
 
 #adding MeanStratification and MeanTemperature to the start mismatch dataset
 mismatch_start_env <- mismatch_start %>%
   inner_join(bats_temp_FINAL, by = "Year") %>%
   inner_join(strat_yearly %>% select(Year, MeanStratification), by = "Year")
-summary(lm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
-summary(lm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env))
+summary(glm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
+summary(glm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env))# better aic 
 
-AIC(lm(ZooStart ~ PhytoStart, data = mismatch_start_env))
-AIC(lm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
-AIC(lm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env)) #lowest AIC, best model is the one with interaction between PhytoStart and MeanStratification
+AIC(glm(ZooStart ~ PhytoStart, data = mismatch_start_env))
+AIC(glm(ZooStart ~ PhytoStart + MeanStratification, data = mismatch_start_env))
+AIC(glm(ZooStart ~ PhytoStart* MeanStratification, data = mismatch_start_env)) #lowest AIC, best model is the one with interaction between PhytoStart and MeanStratification
+AIC(glm(ZooStart ~ PhytoStart + Year, data = mismatch_start_env))
+AIC(glm(ZooStart ~ PhytoStart + Year + MeanTemp + MeanStratification, data = mismatch_start_env))
+AIC(glm(ZooStart ~ PhytoStart + Year*MeanTemp*MeanStratification, data = mismatch_start_env))
 
 
 #plot interaction between PhytoStart and MeanStratification on ZooStart
@@ -1004,7 +1096,7 @@ plot(strat_yearly$Year, strat_yearly$MeanStratification, main = "Stratification 
 
 
 #Visualising overall trends & creating combined dataset (long format) to visualise----
-library(tidyverse)
+
 
 # For zooplankton: wide to long format 
 zooplankton_long <- zooplankton_phenology_clean %>%
