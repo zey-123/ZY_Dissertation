@@ -210,3 +210,8 @@ strat_yearly %>%
 summary(glm(Stratification ~ Year, data=strat_yearly))
 plot(lm(Stratification ~ Year, data=strat_yearly))
 
+
+(sen_temp <- sens.slope(temperature$mean_temp))
+(mk_strat <-MannKendall(strat_yearly$Stratification))
+(sen_strat <- sens.slope(strat_yearly$Stratification))
+
