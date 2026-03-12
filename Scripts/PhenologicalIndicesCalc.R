@@ -194,7 +194,7 @@ ggplot(bloom_start_zooplankton %>% filter(Year >= 1995, Year <= 2022),
        aes(x = Year, y = BloomStartDay)) +
   geom_line(color = "darkorchid") +
   geom_point() + 
-  geom_smooth(method = "lm", color = "darkorchid2", linetype = "dashed",se = FALSE) +
+  geom_smooth(method = "lm", color = "darkorchid2",linetype="dashed", se = FALSE) +
   labs(title = "Zooplankton Bloom Start Day Over Years",
        x = "Year", y = "Bloom Start Day of Year") +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
@@ -202,19 +202,23 @@ ggplot(bloom_start_zooplankton %>% filter(Year >= 1995, Year <= 2022),
 
 
 #visualise bloom start for phytoplankton and zooplankton together (dual axes and trendlines for each)
+fill_colors<- c("Phytoplankton" = "lightskyblue1","Zooplankton"="lavender")
+
 ggplot() +
   geom_line(data = bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay, color = "Phytoplankton"), size = 0.5) +
   geom_point(data = bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay, color = "Phytoplankton"), size = 2) +
-  geom_smooth(data = bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay, color = "Phytoplankton"), method = "lm", se = FALSE, linetype = "dashed",size=0.8) +
+  geom_smooth(data = bloom_start_phytoplankton, aes(x = Year, y = BloomStartDay, color = "Phytoplankton",fill="Phytoplankton"), method = "lm", se = TRUE, linetype = "dashed",size=0.8) +
   geom_line(data = bloom_start_zooplankton, aes(x = Year, y = BloomStartDay, color = "Zooplankton"), size = 0.5) +
   geom_point(data = bloom_start_zooplankton, aes(x = Year, y = BloomStartDay, color = "Zooplankton"), size = 2, shape=15) +
-  geom_smooth(data = bloom_start_zooplankton, aes(x = Year, y = BloomStartDay, color = "Zooplankton"), method = "lm", se = FALSE, linetype = "dashed", size=0.8) +
+  geom_smooth(data = bloom_start_zooplankton, aes(x = Year, y = BloomStartDay, color = "Zooplankton",fill="Zooplankton"), method = "lm", se = TRUE, linetype = "dashed", size=0.8) +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue", "Zooplankton" = "darkorchid")) +
   labs(title = "Bloom Start Day of Year for Phytoplankton and Zooplankton",
        x = "Year",
        y = "Bloom Start Day of Year",
-       color = "Organism") +
+       color = "Organism",
+       fill="Organism") +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+ 
+  scale_fill_manual(values=fill_colors)+
   theme_classic()
 
 # 2) Bloom peak: date when chlorophyll concentration reaches its maximum value during the bloom period.----
@@ -266,6 +270,7 @@ calculate_bloom_peak_zooplankton <- function(data, percentile = 75) {
     ungroup()
 }
 
+
 bloom_peak_zooplankton <- calculate_bloom_peak_zooplankton(zoop_daily %>% rename(Date = date, Biomass = DryBiomass))
 
 #visualize
@@ -281,19 +286,21 @@ ggplot(bloom_peak_zooplankton%>% filter(Year >= 1995, Year <= 2022),
   theme_classic()
 
 # visualise bloom peak for phytoplankton and zooplankton together (dual axes and trendlines for each)
-ggplot() +
+p2<-ggplot() +
   geom_line(data = bloom_peak_phytoplankton, aes(x = Year, y = BloomPeakDay, color = "Phytoplankton"), size = 0.5) +
   geom_point(data = bloom_peak_phytoplankton, aes(x = Year, y = BloomPeakDay, color = "Phytoplankton"), size = 2) +
-  geom_smooth(data = bloom_peak_phytoplankton, aes(x = Year, y = BloomPeakDay, color = "Phytoplankton"), method = "lm", se = FALSE, linetype = "dashed",size=0.8) +
+  geom_smooth(data = bloom_peak_phytoplankton, aes(x = Year, y = BloomPeakDay, color = "Phytoplankton", fill= "Phytoplankton"), method = "lm", se = TRUE, linetype = "dashed",size=0.8) +
   geom_line(data = bloom_peak_zooplankton, aes(x = Year, y = BloomPeakDay, color = "Zooplankton"), size = 0.5) +
   geom_point(data = bloom_peak_zooplankton, aes(x = Year, y = BloomPeakDay, color = "Zooplankton"), size = 2, shape=15) +
-  geom_smooth(data = bloom_peak_zooplankton, aes(x = Year, y = BloomPeakDay, color = "Zooplankton"), method = "lm", se = FALSE, linetype = "dashed", size=0.8) +
+  geom_smooth(data = bloom_peak_zooplankton, aes(x = Year, y = BloomPeakDay, color = "Zooplankton",fill= "Zooplankton"), method = "lm", se = TRUE, linetype = "dashed", size=0.8) +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue", "Zooplankton" = "darkorchid")) +
   labs(title = "Bloom Peak Day of Year for Phytoplankton and Zooplankton",
        x = "Year",
        y = "Bloom Peak Day of Year",
-       color = "Organism") +
+       color="Organism",
+       fill="Organism") +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+ 
+  scale_fill_manual(values=fill_colors)+
   theme_classic()
 
 
@@ -366,20 +373,24 @@ ggplot(bloom_duration_zooplankton%>% filter(Year >= 1995, Year <= 2022),
   theme_classic()
 
 # visualise bloom duration for phytoplankton and zooplankton together (dual axes and trendlines for each)
-ggplot() +
+p3<-ggplot() +
   geom_line(data = bloom_duration_phytoplankton, aes(x = Year, y = BloomDuration, color = "Phytoplankton"), size = 0.5) +
   geom_point(data = bloom_duration_phytoplankton, aes(x = Year, y = BloomDuration, color = "Phytoplankton"), size = 2) +
-  geom_smooth(data = bloom_duration_phytoplankton, aes(x = Year, y = BloomDuration, color = "Phytoplankton"), method = "lm", se = FALSE, linetype = "dashed",size=0.8) +
+  geom_smooth(data = bloom_duration_phytoplankton, aes(x = Year, y = BloomDuration, color = "Phytoplankton",fill = "Phytoplankton"), method = "lm", se = TRUE, linetype = "dashed",size=0.8) +
   geom_line(data = bloom_duration_zooplankton, aes(x = Year, y = BloomDuration, color = "Zooplankton"), size = 0.5) +
   geom_point(data = bloom_duration_zooplankton, aes(x = Year, y = BloomDuration, color = "Zooplankton"), size = 2, shape=15) +
-  geom_smooth(data = bloom_duration_zooplankton, aes(x = Year, y = BloomDuration, color = "Zooplankton"), method = "lm", se = FALSE, linetype = "dashed", size=0.8) +
+  geom_smooth(data = bloom_duration_zooplankton, aes(x = Year, y = BloomDuration, color = "Zooplankton",fill = "Zooplankton"), method = "lm", se = TRUE, linetype = "dashed", size=0.8) +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue", "Zooplankton" = "darkorchid")) +
   labs(title = "Bloom Duration for Phytoplankton and Zooplankton",
        x = "Year",
        y = "Bloom Duration (days)",
-       color = "Organism") +
+       color = "Organism",
+       fill="Organism") +
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+ 
+  scale_fill_manual(values=fill_colors)+
   theme_classic()
+
+(p1|p2|p3)
 
 # 4) Bloom Magnitude: -----
 
@@ -483,7 +494,7 @@ ggplot(bloom_magnitude_zooplankton%>% filter(Year >= 1995, Year <= 2022),
        aes(x = Year, y = BloomMagnitude)) +
   geom_line(color='darkorchid') +
   geom_point() +
-  geom_smooth(method = "lm", linetype = "dashed", se = FALSE, color='darkorchid') +
+  geom_smooth(method = "lm", linetype = "dashed", se = TRUE, color='darkorchid', fill="lavender") +
   labs(title = "Zooplankton Bloom Magnitude (Time-integrated Biomass)",
     x = "Year",
     y = "Bloom integrated biomass (µg/L · day)") +
@@ -549,7 +560,7 @@ ggplot(phyto_amplitude%>% filter(Year >= 1995, Year <= 2022),
        aes(x = Year, y = BloomAmplitude)) +
   geom_line(color='cornflowerblue') +
   geom_point() +
-  geom_smooth(method = "lm", linetype = "dashed", se = FALSE, color='cornflowerblue') +
+  geom_smooth(method = "lm", linetype = "dashed", se = TRUE, color='cornflowerblue', fill="lightskyblue1") +
   labs(title = "Phytoplankton Bloom Amplitude (Peak Chl-a)",
        x = "Year",
        y = "Bloom Peak Chl-a (mg m^-3)") +
@@ -581,7 +592,7 @@ ggplot(zoop_amplitude%>% filter(Year >= 1995, Year <= 2022),
        aes(x = Year, y = BloomAmplitude)) +
   geom_line(color='darkorchid') +
   geom_point() +
-  geom_smooth(method = "lm", linetype = "dashed", se = FALSE,color='darkorchid') +
+  geom_smooth(method = "lm", linetype = "dashed", se = TRUE,color='darkorchid',fill="lavender") +
   labs(title = "Zooplankton Bloom Amplitude (Peak Biomass)",
        x = "Year",
        y = "Bloom Peak Biomass (µg/L)") +
@@ -1141,21 +1152,23 @@ df2 <- df %>% mutate(Value_plot = ifelse(Organism == "Zooplankton", to_phy(Value
 
 # Temperature vs Indices ----
 # the original 3
-ggplot(combined_data%>% filter(Year >= 1995, Year <= 2022), aes(x = MeanTemp, y = Value, color = Organism)) +
+Organism_Colors<- c("Phytoplankton" = "lightskyblue1","Zooplankton"="lavender")
+ggplot(combined_data%>% filter(Year >= 1995, Year <= 2022), aes(x = MeanTemp, y = Value, color = Organism, fill=Organism)) +
   geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_smooth(method = "lm", se = TRUE,linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   theme_minimal() +
   labs(title = "Phenological Indices vs Temperature (Zooplankton & Phytoplankton)",
        x = "Mean Temperature",
        y = "Phenological Value") +
+  scale_fill_manual(values = Organism_Colors)+
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue", "Zooplankton" = "darkorchid"))+
   theme_classic()
 
 # community size indicators (magnitude and amplitude)
-ggplot(df2, aes(x = MeanTemp, y = Value_plot, color = Organism)) +
+ggplot(df2, aes(x = MeanTemp, y = Value_plot, color = Organism,fill=Organism)) +
   geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_smooth(method = "lm", se = TRUE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   scale_y_continuous(name = expression(bold("Phytoplankton")~ "(amplitude:mg m"^{-3} ~ ", magnitude: mg m"^{-3} ~ "\u00B7 day)"),
                      sec.axis = sec_axis(~ to_zoo(.),
@@ -1163,26 +1176,28 @@ ggplot(df2, aes(x = MeanTemp, y = Value_plot, color = Organism)) +
   labs(title = "Phenological Indices vs Temperature (Zooplankton & Phytoplankton)",
        x = "Mean Temperature") +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue","Zooplankton"  = "darkorchid")) +
+  scale_fill_manual(values = Organism_Colors)+
   theme_classic()
 
 
 # Stratification vs Indice ----
 # the original 3
-ggplot(combined_data %>%filter(Year>=1995, Year <=2022), aes(x = MeanStratification, y = Value, color = Organism)) +
+p3<-ggplot(combined_data %>%filter(Year>=1995, Year <=2022), aes(x = MeanStratification, y = Value, color = Organism,fill=Organism)) +
   geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_smooth(method = "lm", se = TRUE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   theme_minimal() +
   labs(title = "Phenological Indices vs Stratification (Zooplankton & Phytoplankton)",
     x = "Mean Stratification",
     y = "Phenological Value") +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue","Zooplankton" = "darkorchid"))+
+  scale_fill_manual(values = Organism_Colors)+
   theme_classic()
 
 # community size indicators 
-ggplot(df2, aes(x = MeanStratification, y = Value_plot, color = Organism)) +
+ggplot(df2, aes(x = MeanStratification, y = Value_plot, color = Organism, fill=Organism)) +
   geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_smooth(method = "lm", se = TRUE, linetype = "dashed") +
   facet_wrap(~PhenologyIndex, scales = "free_y") +
   scale_y_continuous(name = expression(bold("Phytoplankton")~ "(amplitude:mg m"^{-3} ~ ", magnitude: mg m"^{-3} ~ "\u00B7 day)"),
     sec.axis = sec_axis(~ to_zoo(.),
@@ -1192,7 +1207,14 @@ ggplot(df2, aes(x = MeanStratification, y = Value_plot, color = Organism)) +
   labs(title = "Phenological Indices vs Stratification (Zooplankton & Phytoplankton)",
        x = "Mean Stratification") +
   scale_color_manual(values = c("Phytoplankton" = "cornflowerblue","Zooplankton"  = "darkorchid")) +
+  scale_fill_manual(values = Organism_Colors)+
   theme_classic()
+
+
+
+(p3 /p4)
+
+
 
  
 # Year vs Indice - just to check 
