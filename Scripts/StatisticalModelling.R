@@ -10,6 +10,8 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 library(lme4)
+library(Kendall)
+library(trend)
 
 norm_chl <- read_csv("Data/norm_chl.csv") #phyto
 zoop_daily <- read_csv("Data/zoop_daily.csv") #zooplankton
@@ -17,12 +19,11 @@ temperature <- read_csv("Data/BATS_temp_FINAL.csv") #SST
 phytoplankton_phenology_clean <- read_csv("Data/phytoplankton_phenology_clean.csv") #phytoplankton phenology indices
 zooplankton_phenology_clean <- read_csv("Data/zooplankton_phenology_clean.csv") #zooplankton phenology indices
 
-
 ################# ############# ############# ############# ############# ############# ############# ############
 ########################## ############# ######  Statistical Analyses -----############# #################### 
 
 # Model 1: Temporal Trends in Phenology Indices ----
-summary(glm(BloomStartDay~Year, data=phytoplankton_phenology_clean))
+summary(glm(BloomStartDay~Year,data=phytoplankton_phenology_clean))
 summary(glm(BloomPeakDay~Year,family=Gamma, data=phytoplankton_phenology_clean))
 summary(glm(BloomDuration~Year, data=phytoplankton_phenology_clean))
 summary(glm(BloomMagnitude~Year,data=phytoplankton_phenology_clean))
@@ -35,6 +36,17 @@ durbinWatsonTest(glm(BloomDuration~Year, data=phytoplankton_phenology_clean))
 durbinWatsonTest(glm(BloomMagnitude~Year,data=phytoplankton_phenology_clean))
 durbinWatsonTest(glm(BloomAmplitude~Year,data=phytoplankton_phenology_clean))
 
+(MannKendall(phytoplankton_phenology_clean$BloomStartDay))
+(MannKendall(phytoplankton_phenology_clean$BloomPeakDay))
+(MannKendall(phytoplankton_phenology_clean$BloomDuration))
+(MannKendall(phytoplankton_phenology_clean$BloomMagnitude))
+(MannKendall(phytoplankton_phenology_clean$BloomAmplitude))
+
+(sens.slope(phytoplankton_phenology_clean$BloomStartDay))
+(sens.slope(phytoplankton_phenology_clean$BloomPeakDay))
+(sens.slope(phytoplankton_phenology_clean$BloomDuration))
+(sens.slope(phytoplankton_phenology_clean$BloomMagnitude))
+(sens.slope(phytoplankton_phenology_clean$BloomAmplitude))
 
 #shapiro for normality but n<30 
 #shapiro.test(lm(BloomStartDay~Year, data=phytoplankton_phenology_clean)$residuals)
@@ -51,7 +63,17 @@ summary(glm(BloomAmplitude~Year,data=zooplankton_phenology_clean))
 #shapiro.test(lm(BloomStartDay~Year, data=zooplankton_phenology_clean)$residuals)
 #shapiro.test(lm(BloomPeakDay~Year, data=zooplankton_phenology_clean)$residuals) # non normal
 #shapiro.test(lm(BloomDuration~Year, data=zooplankton_phenology_clean)$residuals) 
+(MannKendall(zooplankton_phenology_clean$BloomStartDay))
+(MannKendall(zooplankton_phenology_clean$BloomPeakDay))
+(MannKendall(zooplankton_phenology_clean$BloomDuration))
+(MannKendall(zooplankton_phenology_clean$BloomMagnitude))
+(MannKendall(zooplankton_phenology_clean$BloomAmplitude))
 
+(sens.slope(zooplankton_phenology_clean$BloomStartDay))
+(sens.slope(zooplankton_phenology_clean$BloomPeakDay))
+(sens.slope(zooplankton_phenology_clean$BloomDuration))
+(sens.slope(zooplankton_phenology_clean$BloomMagnitude))
+(sens.slope(zooplankton_phenology_clean$BloomAmplitude))
 
 # Model 2: Temporal Trends in Environmental Drivers ----
 summary(lm(MeanTemp~Year, data=zooplankton_phenology_clean))
@@ -64,6 +86,14 @@ AIC(lm(MeanStratification~Year+MeanTemp, data=zooplankton_phenology_clean)) #tes
 
 cor(zooplankton_phenology_clean$MeanTemp, zooplankton_phenology_clean$MeanStratification) #checking correlation between temp and stratification to check for multicollinearity before including both in the same model.
 
+(mk_temp <- MannKendall(temperature$mean_temp))
+(sen_temp <- sens.slope(temperature$mean_temp))
+
+(mk_strat <-MannKendall(zooplankton_phenology_clean$MeanStratification))
+(sen_strat <- sens.slope(zooplankton_phenology_clean$MeanStratification))
+
+acf(strat_yearly$Stratification)
+acf(temperature$mean_temp)
 #mann kendall test for temp and stratification trends over time - wont include this i dont think
 #mk.test(zooplankton_phenology_clean$MeanTemp)
 #mk.test(zooplankton_phenology_clean$MeanStratification)
@@ -356,26 +386,6 @@ ggplot(phenology_ANOVA_combined, aes(x = Decade, y = BloomDuration, fill=Taxon))
   scale_fill_manual(values=c("Phytoplankton"= "cornflowerblue",
                              "Zooplankton"= "darkorchid")) +
   theme_classic()
-
-
-
-
-# Mann Kendall Test
-install.packages("trend")
-library(trend)
-
-mk.test(lag_peak_df$LagPeakDays)
-
-#mk test for phytoplankton bloom start day and year 
-mk.test(phytoplankton_phenology_clean$BloomStartDay)
-mk.test(phytoplankton_phenology_clean$BloomPeakDay)
-mk.test(phytoplankton_phenology_clean$BloomDuration)
-
-
-
-
-
-
 
 
 
