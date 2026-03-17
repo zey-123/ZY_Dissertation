@@ -71,7 +71,7 @@ calculate_bloom_start_phytoplankton <- function(data, threshold_multiplier = 0.5
     ungroup() %>% 
     filter( AboveThreshold, RunLength >= duration) %>% #only keep days above threshold 
     group_by(Year) %>% 
-    slice_min(Date,n=1,with_ties=FALSE)%>% # gives the first day of the first valid bloom each year. slice_min() is used instead of slice(1) to ensure that if there are multiple runs that meet the criteria, we only take the earliest one. If you use slice(1) after ungrouping, it would just take the first row of the entire dataset, which is not what we want. We want the first valid bloom start for each year, so we need to group by Year again and then take the minimum date within each year.
+    slice_min(Date,n=1,with_ties=FALSE)%>% # gives the first day of the first valid bloom each year. slice_min() is used instead of slice(1) to ensure that if there are multiple runs that meet the criteria, only take the earliest one. If slice(1) used after ungrouping, it would just take the first row of the entire dataset (not what I want). I want the first valid bloom start for each year, so need to group by Year again and then take the minimum date within each year.
     #slice(1) %>% # gives the first day of the first valid bloom each year.
     select(Year, BloomStartDay = DayOfYear)
   
@@ -90,82 +90,9 @@ ggplot(bloom_start_phytoplankton %>% filter(Year >= 1995, Year <= 2022),
   scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
   theme_classic()
 
-#perform timeseries smoothing using local plynomial regression fitting method to have this as main cornflowerblue trend with a faded light blue in the background showing average 
-ggplot(bloom_start_phytoplankton %>% filter(Year >= 1995, Year <= 2022),
-       aes(x = Year, y = BloomStartDay)) +
-  geom_line(color = "lightblue", size = 1) +
-  geom_point() +
-  geom_smooth(method = "loess", color = "cornflowerblue", se = TRUE) + # loess is a local polynomial regression fitting method that can capture non-linear trends in the data. It will create a smooth curve that follows the general pattern of the data points, while also showing the confidence interval (shaded area) around the trend line.
-  labs(title = "Phytoplankton Bloom Start Day with Loess Smoothing",
-       x = "Year",y = "Bloom Start Day of Year") +
-  scale_x_continuous(breaks = c(1995, 2000,2005, 2010, 2015, 2020))+
-  theme_classic()
-
 #The zooplankton method works cleanly in dplyr because it is based on cumulative thresholds, 
 # while phytoplankton bloom detection requires identifying sustained consecutive periods, 
 #which is why run-detection logic (and not simple mutate()) is needed.
-
-
-# Median based threshold - year/day where Chl levels first rise a small threshold above median values (Siegel 2002) - could be an alternative method for phytoplankton bloom start detection.
-calculate_bloom_start_phyto_medianthresh <- function(data, frac = 0.5, duration = 3) { # frac: fraction above median to define threshold; duration: number of consecutive days
-  data %>%
-    mutate(Year = as.numeric(format(Date, "%Y")), 
-           DayOfYear = as.numeric(format(Date, "%j"))) %>%
-    group_by(Year) %>%
-    arrange(Date) %>%
-    mutate(MedianBiomass = median(Biomass, na.rm = TRUE), #Calculate median biomass for the year
-      Threshold = MedianBiomass * (1 + frac), #Define threshold as a fraction above median
-      AboveThreshold = Biomass > Threshold, #Identify days above threshold
-      RunID = cumsum(AboveThreshold != lag(AboveThreshold, default = first(AboveThreshold))) # Create run ID for consecutive above-threshold days
-    ) %>%
-    group_by(Year, RunID) %>% #group by year and run ID
-    mutate(RunLength = n()) %>% #Calculate length of each run
-    ungroup() %>%
-    filter(AboveThreshold, RunLength >= duration) %>% #Filter for valid bloom periods
-    group_by(Year) %>% #Get first day of bloom each year
-    slice(1) %>%
-    select(Year, BloomStartDay = DayOfYear) %>%
-    ungroup()
-}
-bloom_start_phyto_medianthresh <- calculate_bloom_start_phyto_medianthresh(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
-
-#visualize
-ggplot(bloom_start_phyto_medianthresh, aes(x = Year, y = BloomStartDay)) +
-  geom_line(color = "lightblue") +
-  geom_point() +
-  geom_smooth(method = "lm", color = "lightblue", linetype = "dashed",se = FALSE) +
-  labs(title = "Phytoplankton Bloom Start Day (Median Threshold Method) Over Years",
-       x = "Year",
-       y = "Bloom Start Day of Year") +
-  theme_classic()
-
-
-### Alternative Phytoplankton: Year day of maximum instantaneous growth rate within a defined period; used for indexing phytoplankton.	----
-# Function to calculate bloom start date based on maximum growth rate for phytoplankton
-calculate_bloom_start_growth_rate_phytoplankton <- function(data) {
-  data %>%
-    mutate(Year = as.numeric(format(Date, "%Y")),
-           DayOfYear = as.numeric(format(Date, "%j"))) %>%
-    group_by(Year) %>%
-    arrange(Date) %>%
-    mutate(GrowthRate = (Biomass - lag(Biomass)) / lag(Biomass)) %>%
-    filter(!is.na(GrowthRate), is.finite(GrowthRate)) %>%  # safety filter
-    slice_max(GrowthRate, n = 1, with_ties = FALSE) %>%
-    select(Year, BloomStartDay = DayOfYear) %>%
-    ungroup()
-}
-
-bloom_start_growth_rate_phytoplankton <- calculate_bloom_start_growth_rate_phytoplankton(norm_chl %>% rename(Date = Date, Biomass = Chl_mean_200m_mg_m3))
-
-#visualize
-ggplot(bloom_start_growth_rate_phytoplankton, aes(x = Year, y = BloomStartDay)) +
-  geom_line(color = "darkgreen") +
-  geom_point() +
-  geom_smooth(method = "lm", color = "darkgreen", linetype = "dashed",se = FALSE) +
-  labs(title = "Phytoplankton Bloom Start Day (Growth Rate Method) Over Years",
-       x = "Year",
-       y = "Bloom Start Day of Year") +
-  theme_classic()
 
 
 ### Zooplankton: Year day when a lower threshold percentile (e.g. 25th percentile) of annual or seasonal cumulative biomass or abundance is reached; used for indexing zooplankton.	----
@@ -304,7 +231,7 @@ p2<-ggplot() +
   theme_classic()
 
 
-# 3) Bloom duration: number of days between bloom start and bloom end (date when chlorophyll concentration falls below the threshold value again).----
+# 3) Bloom duration: number of days between bloom start and bloom end (date when Chl concentration falls below the threshold value again).----
 # Number of days between bloom “start” and “end” of season percentile thresholds.	
 
 ### Phytoplankton: Function to calculate bloom duration for phytoplankton ----
@@ -735,7 +662,6 @@ AIC(glm(LagStartDays~MeanStratification + MeanTemp, data=lag_start_df_env))
 summary(glm(LagStartDays~MeanStratification*MeanTemp, data=lag_start_df_env)) #Second best AIC
 
 
-
 ggplot(lag_start_df_env,aes(x = MeanTemp, y = LagStartDays, color = Year)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
@@ -746,7 +672,7 @@ ggplot(lag_start_df_env,aes(x = MeanTemp, y = LagStartDays, color = Year)) +
   theme_classic()
 
 ###looking at mismatch in terms of peak day (when maximum occurs) ----
-# important: also making sure missing dates for one are excluded in the other so we are comparing the same years
+# important: also making sure missing dates for one are excluded in the other so comparing the same years
 phyto_peak <- bloom_peak_phytoplankton %>%
   rename(PhytoPeak = BloomPeakDay)
 zoo_peak <- bloom_peak_zooplankton %>%
@@ -783,11 +709,8 @@ ggplot(lag_peak_temp_df, aes(x = MeanTemp, y = LagPeakDays)) +
 summary(glm(LagPeakDays~MeanTemp, data=lag_peak_temp_df))
 
 
-
 plot(lm(LagPeakDays ~ Year*MeanTemp, data = lag_peak_temp_df))
 summary(lm(LagPeakDays ~ Year, data= lag_peak_df))
-
-
 
 
 summary(glm(LagPeakDays ~ MeanTemp, data = lag_peak_temp_df))
@@ -804,14 +727,13 @@ AIC(glm(LagPeakDays~MeanStratification, data=lag_peak_temp_df))
 AIC(glm(LagPeakDays~MeanStratification + MeanTemp, data=lag_peak_temp_df))
 summary(glm(LagPeakDays~MeanStratification*MeanTemp, data=lag_peak_temp_df)) # Best AIC
 
-# Check the residuals of your best model
+# Check the residuals of best model
 best_model <- lm(LagStartDays ~ MeanTemp, data = lag_start_df_env)
 
 # checking autocorrelation 
 acf(residuals(best_model), main="ACF of Model Residuals")
 pacf(residuals(best_model), main="PACF of Model Residuals")
 durbinWatsonTest(best_model)
-
 
 
 ggplot(lag_peak_temp_df,
@@ -1108,7 +1030,6 @@ plot(strat_yearly$Year, strat_yearly$MeanStratification, main = "Stratification 
 
 #Visualising overall trends & creating combined dataset (long format) to visualise----
 
-
 # For zooplankton: wide to long format 
 zooplankton_long <- zooplankton_phenology_clean %>%
   pivot_longer(cols = c(BloomStartDay, BloomPeakDay, BloomDuration),
@@ -1210,13 +1131,9 @@ ggplot(df2, aes(x = MeanStratification, y = Value_plot, color = Organism, fill=O
   scale_fill_manual(values = Organism_Colors)+
   theme_classic()
 
-
-
 (p3 /p4)
 
 
-
- 
 # Year vs Indice - just to check 
 ggplot(combined_data, aes(x = Year, y = Value, color = Organism)) +
   geom_point(size = 2, alpha = 0.7) +
@@ -1228,3 +1145,4 @@ ggplot(combined_data, aes(x = Year, y = Value, color = Organism)) +
   scale_color_brewer(palette = "Paired")+
   theme_classic()
 
+### END (for any unused/trial code, check UnusedCode.R script under PhenologicalIndiciesCalc section)

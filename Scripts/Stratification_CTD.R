@@ -15,11 +15,11 @@ unzip(zipfile = zip_path, exdir = unzip_dir)
 # List the files extracted
 list.files(unzip_dir)
 
-#2 combining all the CTD files into one data frame - Reads all CTD .xls files in your folder, Applies the exact same cleaning steps to each, and Combines them into one large data frame (e.g. bats_temp_surface).
+#2 combining all the CTD files into one data frame - Reads all CTD .xls files in the folder, Applies the exact same cleaning steps to each, and Combines them into one large data frame (e.g. bats_temp_surface).
 library(readxl)
 library(dplyr)
 
-# Define the folder path where all your CTD files are stored
+# Define the folder path where all the CTD files are stored
 path <- "data_local"
 
 # List all .xls files
@@ -30,8 +30,7 @@ col_names <- c(
   "cast_ID", "decimal_year", "latitude", "longitude",
   "pressure_dbar", "depth_m", "temperature_C", "conductivity_S_per_m",
   "salinity_PSS78", "dissolved_oxygen_umol_per_kg",
-  "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s"
-)
+  "beam_attenuation_1_per_m", "fluorescence_RFU", "PAR_uE_per_m2_per_s")
 
 # Diagnosing column misalignment issues
 ctd_files <-ctd_files[!basename(ctd_files) %in% "b20040_ctd.xls"] #getting rid of corrupted file 
